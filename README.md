@@ -16,16 +16,10 @@ Your digital butler for task management. A CLI tool that helps you manage tasks,
 
 ## Installation
 
-### Using uvx (Recommended)
+### Using uvx from GitHub (Recommended)
 
 ```bash
-uvx task-butler
-```
-
-### Using pip
-
-```bash
-pip install task-butler
+uvx --from git+https://github.com/dobachi/task-butler.git task-butler
 ```
 
 ### From Source
@@ -243,14 +237,48 @@ uv run pytest --cov=task_butler
   - Smart suggestions
   - Daily planning assistance
 
-- [ ] **Phase 3**: Advanced Features
+- [ ] **Phase 3**: Obsidian Integration
+  - Use Obsidian vault as storage directory
+  - Obsidian Tasks plugin compatibility
+  - Bidirectional sync with Obsidian notes
+
+- [ ] **Phase 4**: Advanced Features
   - File watching (auto-import from Markdown)
   - Export (JSON, CSV)
   - Interactive chat mode
 
-- [ ] **Phase 4**: Distribution
+- [ ] **Phase 5**: Distribution
+  - PyPI publication (`pip install task-butler`, `uvx task-butler`)
   - Standalone executables
   - Extended documentation
+
+## Obsidian Integration (Planned)
+
+Task Butler is designed to work with [Obsidian](https://obsidian.md/) vaults:
+
+### Basic Usage with Obsidian
+
+```bash
+# Use Obsidian vault as storage
+task-butler --storage-dir ~/Documents/MyVault/Tasks list
+
+# Or set via environment variable
+export TASK_BUTLER_DIR=~/Documents/MyVault/Tasks
+task-butler list
+```
+
+### Obsidian Tasks Plugin Compatibility (Planned)
+
+Future versions will support [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) format:
+
+```markdown
+- [ ] Task name 📅 2025-02-01 ⏳ 2025-01-25 🔺
+```
+
+Features planned:
+- Export tasks in Obsidian Tasks format
+- Import tasks from Obsidian Tasks format
+- Emoji-based priority and date indicators
 
 ## License
 

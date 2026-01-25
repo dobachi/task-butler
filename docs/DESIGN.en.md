@@ -223,16 +223,75 @@ task-butler version                 # Show version
 - [ ] Suggestion feature (suggest)
 - [ ] Planning feature (plan)
 
-### Phase 3: Advanced Features (Not Implemented)
+### Phase 3: Obsidian Integration (Not Implemented)
+
+- [ ] Use Obsidian vault as storage directory
+- [ ] Obsidian Tasks plugin format support
+- [ ] Bidirectional sync functionality
+
+### Phase 4: Advanced Features (Not Implemented)
 
 - [ ] File watching (watchdog)
 - [ ] Export (JSON, CSV)
 - [ ] Interactive mode (chat)
 
-### Phase 4: Distribution (Not Implemented)
+### Phase 5: Distribution (Not Implemented)
 
+- [ ] PyPI publication
 - [ ] Executable packaging (PyInstaller/Nuitka)
 - [ ] Extended documentation
+
+## Obsidian Integration Design
+
+### Overview
+
+Task Butler is designed to work seamlessly with Obsidian vaults.
+
+### Basic Functionality (Currently Supported)
+
+Use `--storage-dir` option to specify Obsidian vault path:
+
+```bash
+task-butler --storage-dir ~/Documents/MyVault/Tasks list
+```
+
+### Obsidian Tasks Plugin Support (Planned)
+
+[Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) plugin format:
+
+```markdown
+- [ ] Task name 📅 2025-02-01 ⏳ 2025-01-25 🔺
+- [x] Completed task ✅ 2025-01-20
+```
+
+#### Emoji Mapping
+
+| Emoji | Meaning | Task Butler Field |
+|-------|---------|-------------------|
+| 📅 | Due date | due_date |
+| ⏳ | Scheduled date | scheduled_date (planned) |
+| 🛫 | Start date | start_date (planned) |
+| ✅ | Done date | completed_at (planned) |
+| 🔺 | High priority | priority: high |
+| 🔼 | Medium priority | priority: medium |
+| 🔽 | Low priority | priority: low |
+| ⏫ | Highest priority | priority: urgent |
+| 🔁 | Recurrence | recurrence |
+
+#### Implementation Approach
+
+1. **Export**: Convert from current Markdown format to Obsidian Tasks format
+2. **Import**: Read from Obsidian Tasks format
+3. **Hybrid Mode**: Use both frontmatter and checkbox format
+
+#### Storage Format Options
+
+```python
+class StorageFormat(Enum):
+    FRONTMATTER = "frontmatter"      # Current format
+    OBSIDIAN_TASKS = "obsidian_tasks"  # Obsidian Tasks format
+    HYBRID = "hybrid"                # Use both formats
+```
 
 ## Technology Stack
 

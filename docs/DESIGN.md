@@ -223,16 +223,75 @@ task-butler version                 # バージョン表示
 - [ ] 推奨機能（suggest）
 - [ ] 計画機能（plan）
 
-### Phase 3: 高度な機能（未実装）
+### Phase 3: Obsidian連携（未実装）
+
+- [ ] ObsidianのVaultをストレージとして使用
+- [ ] Obsidian Tasksプラグイン形式のサポート
+- [ ] 双方向同期機能
+
+### Phase 4: 高度な機能（未実装）
 
 - [ ] ファイル監視（watchdog）
 - [ ] エクスポート（JSON, CSV）
 - [ ] 対話モード（chat）
 
-### Phase 4: 配布（未実装）
+### Phase 5: 配布（未実装）
 
+- [ ] PyPI公開
 - [ ] exe化（PyInstaller/Nuitka）
 - [ ] ドキュメント整備
+
+## Obsidian連携設計
+
+### 概要
+
+Task ButlerはObsidianのVaultと連携して動作するよう設計されています。
+
+### 基本機能（現在対応済み）
+
+`--storage-dir` オプションでObsidian Vaultのパスを指定可能：
+
+```bash
+task-butler --storage-dir ~/Documents/MyVault/Tasks list
+```
+
+### Obsidian Tasksプラグイン対応（計画中）
+
+[Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) プラグインのフォーマット：
+
+```markdown
+- [ ] タスク名 📅 2025-02-01 ⏳ 2025-01-25 🔺
+- [x] 完了タスク ✅ 2025-01-20
+```
+
+#### 絵文字マッピング
+
+| 絵文字 | 意味 | Task Butlerの対応フィールド |
+|--------|------|---------------------------|
+| 📅 | 期限日 | due_date |
+| ⏳ | 予定日 | scheduled_date（新規追加予定） |
+| 🛫 | 開始日 | start_date（新規追加予定） |
+| ✅ | 完了日 | completed_at（新規追加予定） |
+| 🔺 | 高優先度 | priority: high |
+| 🔼 | 中優先度 | priority: medium |
+| 🔽 | 低優先度 | priority: low |
+| ⏫ | 最高優先度 | priority: urgent |
+| 🔁 | 繰り返し | recurrence |
+
+#### 実装方針
+
+1. **エクスポート機能**: 現在のMarkdown形式からObsidian Tasks形式への変換
+2. **インポート機能**: Obsidian Tasks形式からの読み込み
+3. **ハイブリッドモード**: frontmatter + チェックボックス形式の併用
+
+#### ファイル形式オプション
+
+```python
+class StorageFormat(Enum):
+    FRONTMATTER = "frontmatter"      # 現在の形式
+    OBSIDIAN_TASKS = "obsidian_tasks"  # Obsidian Tasks形式
+    HYBRID = "hybrid"                # 両方を併用
+```
 
 ## 技術スタック
 

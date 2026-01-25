@@ -16,16 +16,10 @@
 
 ## インストール
 
-### uvxを使用（推奨）
+### GitHubからuvxを使用（推奨）
 
 ```bash
-uvx task-butler
-```
-
-### pipを使用
-
-```bash
-pip install task-butler
+uvx --from git+https://github.com/dobachi/task-butler.git task-butler
 ```
 
 ### ソースから
@@ -243,14 +237,48 @@ uv run pytest --cov=task_butler
   - スマート提案
   - 日次計画アシスタント
 
-- [ ] **Phase 3**: 高度な機能
+- [ ] **Phase 3**: Obsidian連携
+  - ObsidianのVaultをストレージディレクトリとして使用
+  - Obsidian Tasksプラグイン互換性
+  - Obsidianノートとの双方向同期
+
+- [ ] **Phase 4**: 高度な機能
   - ファイル監視（Markdownからの自動インポート）
   - エクスポート（JSON, CSV）
   - インタラクティブチャットモード
 
-- [ ] **Phase 4**: 配布
+- [ ] **Phase 5**: 配布
+  - PyPI公開（`pip install task-butler`、`uvx task-butler`）
   - スタンドアロン実行ファイル
   - ドキュメント拡充
+
+## Obsidian連携（計画中）
+
+Task Butlerは[Obsidian](https://obsidian.md/)のVaultと連携して動作するよう設計されています：
+
+### ObsidianでのベースNote使用
+
+```bash
+# ObsidianのVaultをストレージとして使用
+task-butler --storage-dir ~/Documents/MyVault/Tasks list
+
+# または環境変数で設定
+export TASK_BUTLER_DIR=~/Documents/MyVault/Tasks
+task-butler list
+```
+
+### Obsidian Tasksプラグイン互換性（計画中）
+
+将来のバージョンでは[Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks)フォーマットをサポート予定：
+
+```markdown
+- [ ] タスク名 📅 2025-02-01 ⏳ 2025-01-25 🔺
+```
+
+計画中の機能:
+- Obsidian Tasks形式でのエクスポート
+- Obsidian Tasks形式からのインポート
+- 絵文字による優先度・日付の表現
 
 ## ライセンス
 
