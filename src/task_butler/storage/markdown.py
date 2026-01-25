@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,11 @@ from ..models.enums import Status, Priority, Frequency
 
 class MarkdownStorage:
     """Read and write tasks as Markdown files with YAML frontmatter."""
+
+    # Characters not allowed in filenames (Windows + Unix restrictions)
+    INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+    # Maximum title length in filename (to avoid path length issues)
+    MAX_TITLE_LENGTH = 50
 
     def __init__(self, base_dir: Path, format: str = "frontmatter"):
         """Initialize storage with base directory.
@@ -26,13 +32,95 @@ class MarkdownStorage:
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.format = format
 
-    def _task_path(self, task_id: str) -> Path:
-        """Get file path for a task."""
-        return self.base_dir / f"{task_id}.md"
+    def _sanitize_filename(self, title: str) -> str:
+        """Sanitize a title for use in a filename.
+
+        Args:
+            title: The task title to sanitize
+
+        Returns:
+            A sanitized string safe for use in filenames
+        """
+        # Replace invalid characters with underscore
+        sanitized = self.INVALID_FILENAME_CHARS.sub("_", title)
+        # Replace multiple spaces/underscores with single underscore
+        sanitized = re.sub(r"[\s_]+", "_", sanitized)
+        # Remove leading/trailing underscores
+        sanitized = sanitized.strip("_")
+        # Truncate to max length
+        if len(sanitized) > self.MAX_TITLE_LENGTH:
+            sanitized = sanitized[:self.MAX_TITLE_LENGTH].rstrip("_")
+        # Fallback if empty
+        if not sanitized:
+            sanitized = "task"
+        return sanitized
+
+    def _task_filename(self, task_id: str, title: str) -> str:
+        """Generate filename for a task.
+
+        Format: {short_id}_{sanitized_title}.md
+        Example: abc123_会議準備.md
+
+        Args:
+            task_id: Full task UUID
+            title: Task title
+
+        Returns:
+            Filename string
+        """
+        short_id = task_id[:8]
+        sanitized_title = self._sanitize_filename(title)
+        return f"{short_id}_{sanitized_title}.md"
+
+    def _task_path(self, task_id: str, title: str | None = None) -> Path:
+        """Get file path for a task.
+
+        Args:
+            task_id: Full task UUID
+            title: Task title (required for new format, optional for lookup)
+
+        Returns:
+            Path to the task file
+        """
+        if title:
+            return self.base_dir / self._task_filename(task_id, title)
+        # Fallback: search for file starting with short_id
+        return self._find_task_file(task_id)
+
+    def _find_task_file(self, task_id: str) -> Path:
+        """Find a task file by ID.
+
+        Searches for files starting with the task's short ID.
+
+        Args:
+            task_id: Full or short task ID
+
+        Returns:
+            Path to the task file (may not exist)
+        """
+        short_id = task_id[:8]
+        # Search for existing file
+        for path in self.base_dir.glob(f"{short_id}_*.md"):
+            return path
+        # Also check for legacy UUID-only format
+        legacy_path = self.base_dir / f"{task_id}.md"
+        if legacy_path.exists():
+            return legacy_path
+        # Return expected path (for new files)
+        return self.base_dir / f"{short_id}_task.md"
 
     def save(self, task: Task) -> Path:
         """Save a task to a Markdown file."""
-        path = self._task_path(task.id)
+        # Get the new path based on current title
+        new_path = self._task_path(task.id, task.title)
+
+        # Check if there's an existing file with different name (title changed)
+        existing_path = self._find_task_file(task.id)
+        if existing_path.exists() and existing_path != new_path:
+            # Delete old file (title changed)
+            existing_path.unlink()
+
+        path = new_path
 
         # Build frontmatter metadata
         metadata = {
@@ -108,7 +196,7 @@ class MarkdownStorage:
 
     def load(self, task_id: str) -> Task | None:
         """Load a task from a Markdown file."""
-        path = self._task_path(task_id)
+        path = self._find_task_file(task_id)
         if not path.exists():
             return None
 
@@ -200,7 +288,7 @@ class MarkdownStorage:
 
     def delete(self, task_id: str) -> bool:
         """Delete a task file."""
-        path = self._task_path(task_id)
+        path = self._find_task_file(task_id)
         if path.exists():
             path.unlink()
             return True
@@ -217,7 +305,7 @@ class MarkdownStorage:
 
     def exists(self, task_id: str) -> bool:
         """Check if a task exists."""
-        return self._task_path(task_id).exists()
+        return self._find_task_file(task_id).exists()
 
     def _strip_obsidian_lines(self, content: str) -> str:
         """Strip Obsidian Tasks lines from content.

@@ -28,7 +28,9 @@ class TestMarkdownStorage:
 
         assert path.exists()
         assert path.suffix == ".md"
-        assert task.id in path.name
+        # New format: {short_id}_{sanitized_title}.md
+        assert task.short_id in path.name
+        assert "Test_task" in path.name
 
     def test_save_and_load_task(self, storage):
         """Test saving and loading a task."""
@@ -650,8 +652,10 @@ class TestTaskRepositoryWithFormat:
         task = Task(title="Hybrid task", due_date=datetime(2025, 2, 1))
         repo_hybrid.create(task)
 
-        # Check file content
-        path = tmp_path / f"{task.id}.md"
+        # Check file content (new format: {short_id}_{title}.md)
+        files = list(tmp_path.glob(f"{task.short_id}_*.md"))
+        assert len(files) == 1
+        path = files[0]
         content = path.read_text()
 
         assert "- [ ] Hybrid task" in content
@@ -662,8 +666,10 @@ class TestTaskRepositoryWithFormat:
         task = Task(title="Frontmatter task", due_date=datetime(2025, 2, 1))
         repo_frontmatter.create(task)
 
-        # Check file content
-        path = tmp_path / f"{task.id}.md"
+        # Check file content (new format: {short_id}_{title}.md)
+        files = list(tmp_path.glob(f"{task.short_id}_*.md"))
+        assert len(files) == 1
+        path = files[0]
         content = path.read_text()
 
         assert "- [ ] Frontmatter task" not in content
