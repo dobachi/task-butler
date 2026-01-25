@@ -14,10 +14,17 @@ from ..models.enums import Status, Priority, Frequency
 class MarkdownStorage:
     """Read and write tasks as Markdown files with YAML frontmatter."""
 
-    def __init__(self, base_dir: Path):
-        """Initialize storage with base directory."""
+    def __init__(self, base_dir: Path, format: str = "frontmatter"):
+        """Initialize storage with base directory.
+
+        Args:
+            base_dir: Directory to store task files
+            format: Storage format - "frontmatter" (default) or "hybrid"
+                   "hybrid" adds Obsidian Tasks line after frontmatter
+        """
         self.base_dir = base_dir
         self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.format = format
 
     def _task_path(self, task_id: str) -> Path:
         """Get file path for a task."""
@@ -73,6 +80,15 @@ class MarkdownStorage:
 
         # Build content
         content_parts = []
+
+        # Hybrid mode: Add Obsidian Tasks line at the beginning
+        if self.format == "hybrid":
+            from .obsidian import ObsidianTasksFormat
+            formatter = ObsidianTasksFormat()
+            obsidian_line = formatter.to_obsidian_line(task)
+            content_parts.append(obsidian_line)
+            content_parts.append("")  # Empty line after Obsidian Tasks line
+
         if task.description:
             content_parts.append(task.description)
 

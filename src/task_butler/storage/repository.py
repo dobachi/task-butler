@@ -13,11 +13,16 @@ from .markdown import MarkdownStorage
 class TaskRepository:
     """Repository for managing tasks with CRUD operations."""
 
-    def __init__(self, storage_dir: Path | None = None):
-        """Initialize repository with storage directory."""
+    def __init__(self, storage_dir: Path | None = None, format: str = "frontmatter"):
+        """Initialize repository with storage directory.
+
+        Args:
+            storage_dir: Directory to store task files
+            format: Storage format - "frontmatter" (default) or "hybrid"
+        """
         if storage_dir is None:
             storage_dir = Path.home() / ".task-butler" / "tasks"
-        self.storage = MarkdownStorage(storage_dir)
+        self.storage = MarkdownStorage(storage_dir, format=format)
 
     def create(self, task: Task) -> Task:
         """Create a new task."""

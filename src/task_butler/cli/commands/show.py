@@ -18,8 +18,12 @@ def show_task(
     task_id: str = typer.Argument(..., help="Task ID (full or short)"),
 ) -> None:
     """Show detailed information about a task."""
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
 
     task = manager.get(task_id)
     if not task:

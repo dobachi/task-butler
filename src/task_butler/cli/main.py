@@ -44,10 +44,18 @@ def main(
         help="Directory for task storage (default: ~/.task-butler/tasks)",
         envvar="TASK_BUTLER_DIR",
     ),
+    format: Optional[str] = typer.Option(
+        None,
+        "--format",
+        "-f",
+        help="Save format: frontmatter (default), hybrid (includes Obsidian Tasks line)",
+        envvar="TASK_BUTLER_FORMAT",
+    ),
 ) -> None:
     """Task Butler - Your digital butler for task management."""
     ctx.ensure_object(dict)
     ctx.obj["storage_dir"] = storage_dir
+    ctx.obj["format"] = format
 
 
 @app.command()
@@ -62,9 +70,12 @@ def version() -> None:
 def projects(ctx: typer.Context) -> None:
     """List all projects."""
     from ..core.task_manager import TaskManager
+    from ..config import get_config
 
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
     project_list = manager.get_projects()
 
     if not project_list:
@@ -80,9 +91,12 @@ def projects(ctx: typer.Context) -> None:
 def tags(ctx: typer.Context) -> None:
     """List all tags."""
     from ..core.task_manager import TaskManager
+    from ..config import get_config
 
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
     tag_list = manager.get_tags()
 
     if not tag_list:
@@ -101,10 +115,13 @@ def search(
 ) -> None:
     """Search tasks by title or description."""
     from ..core.task_manager import TaskManager
+    from ..config import get_config
     from .commands.list_cmd import format_task_line
 
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
     tasks = manager.search(query)
 
     if not tasks:

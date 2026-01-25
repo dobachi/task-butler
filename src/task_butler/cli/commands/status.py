@@ -17,8 +17,12 @@ def start_task(
     task_id: str = typer.Argument(..., help="Task ID (full or short)"),
 ) -> None:
     """Start working on a task."""
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
 
     try:
         task = manager.start(task_id)
@@ -36,8 +40,12 @@ def done_task(
     ),
 ) -> None:
     """Mark a task as done."""
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
 
     try:
         task = manager.complete(task_id, hours)
@@ -60,8 +68,12 @@ def cancel_task(
     task_id: str = typer.Argument(..., help="Task ID (full or short)"),
 ) -> None:
     """Cancel a task."""
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
 
     try:
         task = manager.cancel(task_id)
@@ -77,8 +89,12 @@ def delete_task(
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
 ) -> None:
     """Delete a task permanently."""
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
 
     task = manager.get(task_id)
     if not task:
@@ -105,8 +121,12 @@ def add_note(
     content: str = typer.Argument(..., help="Note content"),
 ) -> None:
     """Add a note to a task."""
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=format)
 
     try:
         task = manager.add_note(task_id, content)

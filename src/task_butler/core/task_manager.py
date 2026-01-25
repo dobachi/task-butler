@@ -14,9 +14,14 @@ from .recurrence import RecurrenceGenerator
 class TaskManager:
     """Main interface for managing tasks."""
 
-    def __init__(self, storage_dir: Path | None = None):
-        """Initialize task manager."""
-        self.repository = TaskRepository(storage_dir)
+    def __init__(self, storage_dir: Path | None = None, format: str = "frontmatter"):
+        """Initialize task manager.
+
+        Args:
+            storage_dir: Directory to store task files
+            format: Storage format - "frontmatter" (default) or "hybrid"
+        """
+        self.repository = TaskRepository(storage_dir, format=format)
         self.recurrence = RecurrenceGenerator()
 
     def add(
@@ -254,6 +259,40 @@ class TaskManager:
             for t in self.repository.list_all(include_done=True)
             if t.recurrence_parent_id == parent_id
         ]
+
+    def find_duplicate(
+        self, title: str, due_date: datetime | None = None
+    ) -> Task | None:
+        """Find a duplicate task by title and due date.
+
+        Args:
+            title: Task title (normalized for comparison)
+            due_date: Due date (date part only, time ignored; None also matches)
+
+        Returns:
+            Duplicate task if found, None otherwise
+        """
+        normalized_title = self._normalize_title(title)
+        for task in self.repository.list_all(include_done=True):
+            if self._normalize_title(task.title) != normalized_title:
+                continue
+            if self._dates_equal(task.due_date, due_date):
+                return task
+        return None
+
+    def _normalize_title(self, title: str) -> str:
+        """Normalize a title for comparison."""
+        return title.lower().strip()
+
+    def _dates_equal(
+        self, d1: datetime | None, d2: datetime | None
+    ) -> bool:
+        """Compare date parts only (ignore time)."""
+        if d1 is None and d2 is None:
+            return True
+        if d1 is None or d2 is None:
+            return False
+        return d1.date() == d2.date()
 
     def generate_recurring_tasks(self) -> list[Task]:
         """Generate next instances for all recurring tasks that need them."""

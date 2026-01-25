@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import fnmatch
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -10,9 +12,20 @@ from rich.console import Console
 from rich.table import Table
 
 from ...core.task_manager import TaskManager
-from ...storage.obsidian import ObsidianTasksFormat, ConflictResolution
+from ...models.enums import Status, Priority
+from ...models.task import Task
+from ...storage.obsidian import ObsidianTasksFormat, ConflictResolution, ParsedObsidianTask
 
 console = Console()
+
+
+class DuplicateAction(str, Enum):
+    """Action to take when a duplicate is found."""
+
+    SKIP = "skip"
+    UPDATE = "update"
+    FORCE = "force"
+    INTERACTIVE = "interactive"
 
 obsidian_app = typer.Typer(
     name="obsidian",
@@ -38,8 +51,12 @@ def export_tasks(
     ),
 ) -> None:
     """Export tasks in Obsidian-compatible format."""
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=storage_format)
     formatter = ObsidianTasksFormat()
 
     tasks = manager.list(include_done=include_done)
@@ -74,30 +91,81 @@ def export_tasks(
         console.print(output_text)
 
 
-@obsidian_app.command(name="import")
-def import_tasks(
-    ctx: typer.Context,
-    file: Path = typer.Argument(..., help="Markdown file to import from"),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", "-n", help="Show what would be imported without making changes"
-    ),
-) -> None:
-    """Import tasks from an Obsidian markdown file.
+def _collect_files(path: Path, recursive: bool, pattern: str) -> list[Path]:
+    """Collect markdown files from a path.
 
-    Parses Obsidian Tasks format lines (- [ ] or - [x]) and creates tasks.
+    Args:
+        path: File or directory path
+        recursive: Include subdirectories
+        pattern: Glob pattern for file matching
+
+    Returns:
+        List of file paths to process
     """
-    if not file.exists():
-        console.print(f"[red]Error:[/red] File not found: {file}")
-        raise typer.Exit(1)
+    if path.is_file():
+        return [path]
 
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
-    formatter = ObsidianTasksFormat()
+    if recursive:
+        files = list(path.rglob(pattern))
+    else:
+        files = list(path.glob(pattern))
 
+    return sorted([f for f in files if f.is_file()])
+
+
+def _prompt_duplicate_action(
+    existing_task: Task, parsed: ParsedObsidianTask
+) -> str:
+    """Prompt user for action on duplicate task.
+
+    Args:
+        existing_task: The existing task in storage
+        parsed: The parsed task from Obsidian
+
+    Returns:
+        User's choice: 's' (skip), 'u' (update), 'f' (force), 'a' (all skip), 'A' (all update)
+    """
+    console.print(f"\n[yellow]⚠ Duplicate found:[/yellow] \"{parsed.title}\"")
+    if parsed.due_date:
+        console.print(f"  Due: {parsed.due_date.strftime('%Y-%m-%d')}")
+    console.print(f"  Existing task: [cyan]{existing_task.short_id}[/cyan]")
+
+    while True:
+        choice = console.input(
+            "[dim][s]kip, [u]pdate, [f]orce create, [a]ll skip, [A]ll update:[/dim] "
+        )
+        if choice in ("s", "u", "f", "a", "A"):
+            return choice
+        console.print("[red]Invalid choice. Use s/u/f/a/A[/red]")
+
+
+def _import_single_file(
+    file: Path,
+    manager: TaskManager,
+    formatter: ObsidianTasksFormat,
+    duplicate_action: DuplicateAction,
+    dry_run: bool,
+    global_action: dict,
+) -> tuple[list, list, list, list]:
+    """Import tasks from a single file.
+
+    Args:
+        file: File path to import
+        manager: TaskManager instance
+        formatter: ObsidianTasksFormat instance
+        duplicate_action: How to handle duplicates
+        dry_run: Preview only
+        global_action: Mutable dict for storing user's "all" choice
+
+    Returns:
+        Tuple of (imported, updated, skipped, errors) lists
+    """
     content = file.read_text(encoding="utf-8")
     lines = content.split("\n")
 
     imported = []
+    updated = []
+    skipped = []
     errors = []
 
     for i, line in enumerate(lines, 1):
@@ -108,13 +176,77 @@ def import_tasks(
         try:
             parsed = formatter.from_obsidian_line(line)
 
+            # Check for duplicates
+            existing = manager.find_duplicate(parsed.title, parsed.due_date)
+
+            if existing:
+                # Determine action
+                action = global_action.get("action", duplicate_action)
+
+                if action == DuplicateAction.INTERACTIVE:
+                    choice = _prompt_duplicate_action(existing, parsed)
+                    if choice == "a":
+                        global_action["action"] = DuplicateAction.SKIP
+                        action = DuplicateAction.SKIP
+                    elif choice == "A":
+                        global_action["action"] = DuplicateAction.UPDATE
+                        action = DuplicateAction.UPDATE
+                    elif choice == "s":
+                        action = DuplicateAction.SKIP
+                    elif choice == "u":
+                        action = DuplicateAction.UPDATE
+                    elif choice == "f":
+                        action = DuplicateAction.FORCE
+
+                if action == DuplicateAction.SKIP:
+                    if dry_run:
+                        console.print(
+                            f"  [dim]Line {i}:[/dim] [yellow]SKIP[/yellow] {parsed.title} "
+                            f"(duplicate of {existing.short_id})"
+                        )
+                    skipped.append((parsed, existing))
+                    continue
+
+                elif action == DuplicateAction.UPDATE:
+                    if dry_run:
+                        console.print(
+                            f"  [dim]Line {i}:[/dim] [blue]UPDATE[/blue] {parsed.title} "
+                            f"(existing: {existing.short_id})"
+                        )
+                    else:
+                        # Update existing task
+                        manager.update(
+                            existing.id,
+                            priority=parsed.priority or existing.priority,
+                            due_date=parsed.due_date,
+                            scheduled_date=parsed.scheduled_date,
+                            start_date=parsed.start_date,
+                            tags=parsed.tags if parsed.tags else None,
+                        )
+
+                        # Handle status change
+                        if parsed.is_completed and existing.status != Status.DONE:
+                            manager.complete(existing.id)
+                            if parsed.completed_at:
+                                task = manager.get(existing.id)
+                                if task:
+                                    task.completed_at = parsed.completed_at
+                                    manager.repository.update(task)
+
+                        updated.append(existing)
+                    continue
+
+                # FORCE: fall through to create new task
+
+            # Create new task
             if dry_run:
                 status = "done" if parsed.is_completed else "pending"
                 priority = parsed.priority.value if parsed.priority else "medium"
-                console.print(f"  [dim]Line {i}:[/dim] {parsed.title} [{status}, {priority}]")
+                console.print(
+                    f"  [dim]Line {i}:[/dim] [green]NEW[/green] {parsed.title} [{status}, {priority}]"
+                )
+                imported.append(parsed)
             else:
-                from ...models.enums import Status, Priority
-
                 task = manager.add(
                     title=parsed.title,
                     priority=parsed.priority or Priority.MEDIUM,
@@ -127,7 +259,6 @@ def import_tasks(
                 # Update status if completed
                 if parsed.is_completed:
                     manager.complete(task.id)
-                    # Update completed_at if specified
                     if parsed.completed_at:
                         task = manager.get(task.id)
                         if task:
@@ -139,15 +270,136 @@ def import_tasks(
         except ValueError as e:
             errors.append((i, line, str(e)))
 
-    if dry_run:
-        console.print(f"\n[bold]Would import {len(imported) + sum(1 for _ in [l for l in lines if l.strip().startswith('- [')])} tasks[/bold]")
-        if errors:
-            console.print(f"[yellow]Skipped {len(errors)} invalid lines[/yellow]")
+    return imported, updated, skipped, errors
+
+
+@obsidian_app.command(name="import")
+def import_tasks(
+    ctx: typer.Context,
+    path: Path = typer.Argument(..., help="File or directory to import from"),
+    recursive: bool = typer.Option(
+        False, "--recursive", "-r", help="Include subdirectories"
+    ),
+    pattern: str = typer.Option(
+        "*.md", "--pattern", "-p", help="File pattern for directory import"
+    ),
+    skip: bool = typer.Option(
+        False, "--skip", help="Skip duplicate tasks (default behavior)"
+    ),
+    update: bool = typer.Option(
+        False, "--update", help="Update existing tasks on duplicate"
+    ),
+    force: bool = typer.Option(
+        False, "--force", help="Force create even if duplicate exists"
+    ),
+    interactive: bool = typer.Option(
+        False, "--interactive", "-i", help="Prompt for each duplicate"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Show what would be imported without making changes"
+    ),
+) -> None:
+    """Import tasks from Obsidian markdown file(s).
+
+    Parses Obsidian Tasks format lines (- [ ] or - [x]) and creates tasks.
+
+    Examples:
+        # Import single file
+        task-butler obsidian import ~/Vault/daily/2025-01-25.md
+
+        # Import all files in directory
+        task-butler obsidian import ~/Vault/daily/
+
+        # Import recursively
+        task-butler obsidian import ~/Vault/ --recursive
+
+        # Preview without changes
+        task-butler obsidian import ~/Vault/daily/ --dry-run
+
+        # Update existing tasks on duplicate
+        task-butler obsidian import ~/Vault/daily/ --update
+
+        # Interactive mode
+        task-butler obsidian import ~/Vault/daily/ --interactive
+    """
+    if not path.exists():
+        console.print(f"[red]Error:[/red] Path not found: {path}")
+        raise typer.Exit(1)
+
+    # Determine duplicate action (mutually exclusive options)
+    action_count = sum([skip, update, force, interactive])
+    if action_count > 1:
+        console.print("[red]Error:[/red] Options --skip, --update, --force, --interactive are mutually exclusive")
+        raise typer.Exit(1)
+
+    if update:
+        duplicate_action = DuplicateAction.UPDATE
+    elif force:
+        duplicate_action = DuplicateAction.FORCE
+    elif interactive:
+        duplicate_action = DuplicateAction.INTERACTIVE
     else:
-        console.print(f"[green]✓[/green] Imported {len(imported)} tasks from {file}")
-        if errors:
-            console.print(f"[yellow]Warning:[/yellow] {len(errors)} lines could not be parsed")
-            for line_num, line_text, error in errors[:5]:
+        duplicate_action = DuplicateAction.SKIP  # Default
+
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=storage_format)
+    formatter = ObsidianTasksFormat()
+
+    # Collect files to process
+    files = _collect_files(path, recursive, pattern)
+
+    if not files:
+        console.print(f"[yellow]No files found matching pattern '{pattern}' in {path}[/yellow]")
+        return
+
+    if path.is_dir():
+        console.print(f"[bold]Processing {len(files)} file(s) from {path}[/bold]")
+        if recursive:
+            console.print(f"[dim](recursive mode)[/dim]")
+
+    total_imported = []
+    total_updated = []
+    total_skipped = []
+    total_errors = []
+    global_action: dict = {}  # For storing "all skip" or "all update" choice
+
+    for file in files:
+        if len(files) > 1:
+            console.print(f"\n[cyan]{file.name}:[/cyan]")
+
+        imported, updated, skipped, errors = _import_single_file(
+            file, manager, formatter, duplicate_action, dry_run, global_action
+        )
+
+        total_imported.extend(imported)
+        total_updated.extend(updated)
+        total_skipped.extend(skipped)
+        total_errors.extend(errors)
+
+    # Summary
+    console.print()
+    if dry_run:
+        console.print("[bold]Dry run summary:[/bold]")
+        console.print(f"  Would import: {len(total_imported)} new task(s)")
+        if total_updated:
+            console.print(f"  Would update: {len(total_updated)} existing task(s)")
+        if total_skipped:
+            console.print(f"  Would skip: {len(total_skipped)} duplicate(s)")
+        if total_errors:
+            console.print(f"  [yellow]Parse errors: {len(total_errors)}[/yellow]")
+    else:
+        console.print(f"[green]✓[/green] Imported {len(total_imported)} new task(s)")
+        if total_updated:
+            console.print(f"[blue]✓[/blue] Updated {len(total_updated)} existing task(s)")
+        if total_skipped:
+            console.print(f"[dim]Skipped {len(total_skipped)} duplicate(s)[/dim]")
+        if total_errors:
+            console.print(f"[yellow]Warning:[/yellow] {len(total_errors)} lines could not be parsed")
+            for line_num, line_text, error in total_errors[:5]:
                 console.print(f"  Line {line_num}: {error}")
 
 
@@ -160,8 +412,12 @@ def check_conflicts(
     This command reads task files and compares the YAML frontmatter
     with any Obsidian Tasks format line in the content body.
     """
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=storage_format)
     formatter = ObsidianTasksFormat()
 
     tasks = manager.list(include_done=True)
@@ -228,8 +484,12 @@ def resolve_conflicts(
     line in the body, they may become inconsistent if edited in Obsidian.
     This command synchronizes them based on the chosen strategy.
     """
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=storage_format)
     formatter = ObsidianTasksFormat()
 
     if strategy not in ("frontmatter", "obsidian"):
@@ -336,8 +596,12 @@ def format_task(
 
     Useful for copying the task line to paste into Obsidian notes.
     """
-    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
-    manager = TaskManager(storage_dir)
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    manager = TaskManager(storage_dir, format=storage_format)
     formatter = ObsidianTasksFormat()
 
     task = manager.get(task_id)

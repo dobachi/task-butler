@@ -10,6 +10,7 @@ from task_butler.models.task import Task, RecurrenceRule
 from task_butler.models.enums import Status, Priority, Frequency
 from task_butler.storage.markdown import MarkdownStorage
 from task_butler.storage.repository import TaskRepository
+from task_butler.storage.obsidian import ObsidianTasksFormat
 
 
 class TestMarkdownStorage:
@@ -332,3 +333,182 @@ class TestTaskRepository:
         titles = [t.title for t in results]
         assert "Fix bug in login" in titles
         assert "Add feature" in titles
+
+
+class TestMarkdownStorageHybridMode:
+    """Tests for MarkdownStorage hybrid mode."""
+
+    @pytest.fixture
+    def storage_hybrid(self, tmp_path):
+        """Create a storage instance with hybrid format."""
+        return MarkdownStorage(tmp_path, format="hybrid")
+
+    @pytest.fixture
+    def storage_frontmatter(self, tmp_path):
+        """Create a storage instance with frontmatter format (default)."""
+        return MarkdownStorage(tmp_path, format="frontmatter")
+
+    def test_hybrid_mode_includes_obsidian_line(self, storage_hybrid):
+        """Test hybrid mode includes Obsidian Tasks line."""
+        task = Task(
+            title="Test task",
+            priority=Priority.HIGH,
+            due_date=datetime(2025, 2, 1),
+        )
+        path = storage_hybrid.save(task)
+
+        content = path.read_text()
+
+        # Should have frontmatter
+        assert "---" in content
+        assert "title: Test task" in content
+
+        # Should have Obsidian Tasks line
+        assert "- [ ] Test task" in content
+        assert "⏫" in content  # High priority emoji
+        assert "📅 2025-02-01" in content
+
+    def test_frontmatter_mode_no_obsidian_line(self, storage_frontmatter):
+        """Test frontmatter mode does not include Obsidian Tasks line."""
+        task = Task(
+            title="Test task",
+            priority=Priority.HIGH,
+            due_date=datetime(2025, 2, 1),
+        )
+        path = storage_frontmatter.save(task)
+
+        content = path.read_text()
+
+        # Should have frontmatter
+        assert "---" in content
+        assert "title: Test task" in content
+
+        # Should NOT have Obsidian Tasks line
+        assert "- [ ] Test task" not in content
+
+    def test_hybrid_with_description(self, storage_hybrid):
+        """Test hybrid mode with description."""
+        task = Task(
+            title="Meeting prep",
+            description="Prepare slides for the meeting",
+            due_date=datetime(2025, 2, 1),
+        )
+        path = storage_hybrid.save(task)
+
+        content = path.read_text()
+
+        # Obsidian line should come before description
+        obsidian_idx = content.find("- [ ] Meeting prep")
+        desc_idx = content.find("Prepare slides")
+
+        assert obsidian_idx < desc_idx
+
+    def test_hybrid_with_completed_task(self, storage_hybrid):
+        """Test hybrid mode with completed task."""
+        task = Task(
+            title="Done task",
+            status=Status.DONE,
+        )
+        path = storage_hybrid.save(task)
+
+        content = path.read_text()
+
+        # Should have checked checkbox
+        assert "- [x] Done task" in content
+
+    def test_hybrid_with_tags(self, storage_hybrid):
+        """Test hybrid mode includes tags."""
+        task = Task(
+            title="Tagged task",
+            tags=["work", "urgent"],
+        )
+        path = storage_hybrid.save(task)
+
+        content = path.read_text()
+
+        # Tags should be in Obsidian line
+        assert "#work" in content
+        assert "#urgent" in content
+
+    def test_hybrid_load_preserves_data(self, storage_hybrid):
+        """Test loading hybrid format preserves task data."""
+        task = Task(
+            title="Test task",
+            description="A test task",
+            priority=Priority.HIGH,
+            due_date=datetime(2025, 2, 1),
+            tags=["test"],
+        )
+        storage_hybrid.save(task)
+
+        loaded = storage_hybrid.load(task.id)
+
+        # Core data should be preserved (loaded from frontmatter)
+        assert loaded.title == task.title
+        assert loaded.priority == task.priority
+        assert loaded.due_date.date() == task.due_date.date()
+        assert loaded.tags == task.tags
+
+    def test_hybrid_with_notes(self, storage_hybrid):
+        """Test hybrid mode preserves notes."""
+        task = Task(title="Task with notes")
+        task.add_note("First note")
+        task.add_note("Second note")
+        storage_hybrid.save(task)
+
+        loaded = storage_hybrid.load(task.id)
+
+        assert len(loaded.notes) == 2
+        assert loaded.notes[0].content == "First note"
+
+    def test_hybrid_with_recurrence(self, storage_hybrid):
+        """Test hybrid mode with recurring task."""
+        task = Task(
+            title="Weekly review",
+            recurrence=RecurrenceRule(frequency=Frequency.WEEKLY),
+        )
+        path = storage_hybrid.save(task)
+
+        content = path.read_text()
+
+        # Should have recurrence emoji
+        assert "🔁" in content
+        assert "every week" in content
+
+
+class TestTaskRepositoryWithFormat:
+    """Tests for TaskRepository with format parameter."""
+
+    @pytest.fixture
+    def repo_hybrid(self, tmp_path):
+        """Create a repository with hybrid format."""
+        return TaskRepository(tmp_path, format="hybrid")
+
+    @pytest.fixture
+    def repo_frontmatter(self, tmp_path):
+        """Create a repository with frontmatter format."""
+        return TaskRepository(tmp_path, format="frontmatter")
+
+    def test_repository_hybrid_format(self, repo_hybrid, tmp_path):
+        """Test repository creates files in hybrid format."""
+        task = Task(title="Hybrid task", due_date=datetime(2025, 2, 1))
+        repo_hybrid.create(task)
+
+        # Check file content
+        path = tmp_path / f"{task.id}.md"
+        content = path.read_text()
+
+        assert "- [ ] Hybrid task" in content
+        assert "📅 2025-02-01" in content
+
+    def test_repository_frontmatter_format(self, repo_frontmatter, tmp_path):
+        """Test repository creates files in frontmatter format."""
+        task = Task(title="Frontmatter task", due_date=datetime(2025, 2, 1))
+        repo_frontmatter.create(task)
+
+        # Check file content
+        path = tmp_path / f"{task.id}.md"
+        content = path.read_text()
+
+        assert "- [ ] Frontmatter task" not in content
+        assert "due_date:" in content
