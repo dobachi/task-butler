@@ -160,6 +160,10 @@ class MarkdownStorage:
                         # If parsing fails, just use the line as content
                         notes.append(Note(content=line[2:]))
 
+        # Strip Obsidian Tasks lines from description (they start with "- [ ]" or "- [x]")
+        # This prevents duplication when saving in hybrid mode
+        description = self._strip_obsidian_lines(description)
+
         # Build task
         task = Task(
             id=metadata["id"],
@@ -214,3 +218,23 @@ class MarkdownStorage:
     def exists(self, task_id: str) -> bool:
         """Check if a task exists."""
         return self._task_path(task_id).exists()
+
+    def _strip_obsidian_lines(self, content: str) -> str:
+        """Strip Obsidian Tasks lines from content.
+
+        Removes lines that start with "- [ ]" or "- [x]" (case insensitive for x).
+        These are Obsidian Tasks format lines that should not be part of
+        the description to avoid duplication when saving in hybrid mode.
+        """
+        lines = content.split("\n")
+        filtered_lines = []
+        for line in lines:
+            stripped = line.strip()
+            # Skip Obsidian Tasks lines (checkbox format)
+            if stripped.startswith("- [ ]") or stripped.lower().startswith("- [x]"):
+                continue
+            filtered_lines.append(line)
+
+        # Remove leading/trailing empty lines that might result from stripping
+        result = "\n".join(filtered_lines)
+        return result.strip()

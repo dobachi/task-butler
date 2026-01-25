@@ -475,6 +475,43 @@ class TestMarkdownStorageHybridMode:
         assert "🔁" in content
         assert "every week" in content
 
+    def test_hybrid_multiple_saves_no_duplication(self, storage_hybrid):
+        """Test that multiple saves don't duplicate Obsidian Tasks line."""
+        task = Task(
+            title="Test task",
+            priority=Priority.HIGH,
+            due_date=datetime(2025, 2, 1),
+        )
+
+        # First save
+        storage_hybrid.save(task)
+
+        # Load and save again (simulating adding a note)
+        loaded = storage_hybrid.load(task.id)
+        loaded.add_note("Test note")
+        path = storage_hybrid.save(loaded)
+
+        content = path.read_text()
+
+        # Count Obsidian Tasks lines - should be exactly one
+        obsidian_line_count = content.count("- [ ] Test task")
+        assert obsidian_line_count == 1, f"Expected 1 Obsidian line, found {obsidian_line_count}"
+
+    def test_hybrid_load_strips_obsidian_line_from_description(self, storage_hybrid):
+        """Test that loading strips Obsidian Tasks line from description."""
+        task = Task(
+            title="Test task",
+            description="This is the real description",
+            due_date=datetime(2025, 2, 1),
+        )
+
+        storage_hybrid.save(task)
+        loaded = storage_hybrid.load(task.id)
+
+        # Description should not contain Obsidian Tasks line
+        assert "- [ ]" not in loaded.description
+        assert "This is the real description" in loaded.description
+
 
 class TestTaskRepositoryWithFormat:
     """Tests for TaskRepository with format parameter."""
