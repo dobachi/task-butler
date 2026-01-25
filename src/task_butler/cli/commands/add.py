@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 import re
+from datetime import datetime, timedelta
 from typing import Optional
 
 import typer
 from rich.console import Console
 
 from ...core.task_manager import TaskManager
+from ...models.enums import Frequency, Priority
 from ...models.task import RecurrenceRule
-from ...models.enums import Priority, Frequency
 
 console = Console()
 
@@ -81,36 +81,27 @@ def parse_recurrence(value: str) -> RecurrenceRule:
 def add_task(
     ctx: typer.Context,
     title: str = typer.Argument(..., help="Task title"),
-    description: Optional[str] = typer.Option(
-        None, "--desc", "-D", help="Task description"
-    ),
-    priority: Priority = typer.Option(
-        Priority.MEDIUM, "--priority", "-p", help="Task priority"
-    ),
+    description: Optional[str] = typer.Option(None, "--desc", "-D", help="Task description"),
+    priority: Priority = typer.Option(Priority.MEDIUM, "--priority", "-p", help="Task priority"),
     due: Optional[str] = typer.Option(
         None, "--due", "-d", help="Due date (YYYY-MM-DD, today, tomorrow)"
     ),
     scheduled: Optional[str] = typer.Option(
-        None, "--scheduled", "-s", help="Scheduled date - when to work on it (YYYY-MM-DD, today, tomorrow)"
+        None,
+        "--scheduled",
+        "-s",
+        help="Scheduled date - when to work on it (YYYY-MM-DD, today, tomorrow)",
     ),
     start: Optional[str] = typer.Option(
         None, "--start", help="Start date - when work can begin (YYYY-MM-DD, today, tomorrow)"
     ),
-    tags: Optional[str] = typer.Option(
-        None, "--tags", "-t", help="Comma-separated tags"
-    ),
-    project: Optional[str] = typer.Option(
-        None, "--project", "-P", help="Project name"
-    ),
-    parent: Optional[str] = typer.Option(
-        None, "--parent", help="Parent task ID"
-    ),
+    tags: Optional[str] = typer.Option(None, "--tags", "-t", help="Comma-separated tags"),
+    project: Optional[str] = typer.Option(None, "--project", "-P", help="Project name"),
+    parent: Optional[str] = typer.Option(None, "--parent", help="Parent task ID"),
     depends: Optional[str] = typer.Option(
         None, "--depends", help="Comma-separated dependency task IDs"
     ),
-    hours: Optional[float] = typer.Option(
-        None, "--hours", "-h", help="Estimated hours"
-    ),
+    hours: Optional[float] = typer.Option(None, "--hours", "-h", help="Estimated hours"),
     recur: Optional[str] = typer.Option(
         None, "--recur", "-r", help="Recurrence (daily, weekly, monthly, yearly, or 'every N days')"
     ),

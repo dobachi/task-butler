@@ -2,10 +2,8 @@
 
 from datetime import datetime
 
-import pytest
-
-from task_butler.models.task import Task, Note, RecurrenceRule
-from task_butler.models.enums import Status, Priority, Frequency
+from task_butler.models.enums import Frequency, Priority, Status
+from task_butler.models.task import Note, RecurrenceRule, Task
 
 
 class TestNote:

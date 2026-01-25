@@ -5,10 +5,9 @@ from __future__ import annotations
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 
 from ...core.task_manager import TaskManager
-from ...models.enums import Status, Priority
+from ...models.enums import Priority, Status
 
 console = Console()
 
@@ -59,7 +58,7 @@ def show_task(
 
     # Description
     if task.description:
-        lines.append(f"[bold]Description:[/bold]")
+        lines.append("[bold]Description:[/bold]")
         lines.append(task.description)
         lines.append("")
 

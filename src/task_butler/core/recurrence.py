@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from calendar import monthrange
+from datetime import datetime, timedelta
 
-from ..models.task import Task, RecurrenceRule
-from ..models.enums import Frequency, Status
+from ..models.enums import Frequency
+from ..models.task import RecurrenceRule, Task
 
 
 class RecurrenceGenerator:
     """Generate instances of recurring tasks."""
 
-    def get_next_occurrence(
-        self, rule: RecurrenceRule, after: datetime
-    ) -> datetime | None:
+    def get_next_occurrence(self, rule: RecurrenceRule, after: datetime) -> datetime | None:
         """Calculate the next occurrence after the given date."""
         if rule.end_date and after >= rule.end_date:
             return None

@@ -35,9 +35,7 @@ def start_task(
 def done_task(
     ctx: typer.Context,
     task_id: str = typer.Argument(..., help="Task ID (full or short)"),
-    hours: Optional[float] = typer.Option(
-        None, "--hours", "-h", help="Actual hours spent"
-    ),
+    hours: Optional[float] = typer.Option(None, "--hours", "-h", help="Actual hours spent"),
 ) -> None:
     """Mark a task as done."""
     from ...config import get_config

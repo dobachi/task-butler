@@ -1,14 +1,10 @@
 """Tests for CLI commands."""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 from typer.testing import CliRunner
 
 from task_butler.cli.main import app
 from task_butler.core.task_manager import TaskManager
-
 
 runner = CliRunner()
 
@@ -37,48 +33,36 @@ class TestAddCommand:
 
     def test_add_task_with_priority(self, cli_args):
         """Test adding a task with priority."""
-        result = runner.invoke(
-            app, cli_args + ["add", "Important task", "--priority", "high"]
-        )
+        result = runner.invoke(app, cli_args + ["add", "Important task", "--priority", "high"])
         assert result.exit_code == 0
         assert "Created task" in result.output
 
     def test_add_task_with_due_date(self, cli_args):
         """Test adding a task with due date."""
-        result = runner.invoke(
-            app, cli_args + ["add", "Due task", "--due", "2024-06-15"]
-        )
+        result = runner.invoke(app, cli_args + ["add", "Due task", "--due", "2024-06-15"])
         assert result.exit_code == 0
         assert "Due:" in result.output
 
     def test_add_task_with_relative_due(self, cli_args):
         """Test adding a task with relative due date."""
-        result = runner.invoke(
-            app, cli_args + ["add", "Today task", "--due", "today"]
-        )
+        result = runner.invoke(app, cli_args + ["add", "Today task", "--due", "today"])
         assert result.exit_code == 0
         assert "Created task" in result.output
 
     def test_add_task_with_tags(self, cli_args):
         """Test adding a task with tags."""
-        result = runner.invoke(
-            app, cli_args + ["add", "Tagged task", "--tags", "work,important"]
-        )
+        result = runner.invoke(app, cli_args + ["add", "Tagged task", "--tags", "work,important"])
         assert result.exit_code == 0
 
     def test_add_task_with_project(self, cli_args):
         """Test adding a task with project."""
-        result = runner.invoke(
-            app, cli_args + ["add", "Project task", "--project", "my-project"]
-        )
+        result = runner.invoke(app, cli_args + ["add", "Project task", "--project", "my-project"])
         assert result.exit_code == 0
         assert "Project:" in result.output
 
     def test_add_recurring_task(self, cli_args):
         """Test adding a recurring task."""
-        result = runner.invoke(
-            app, cli_args + ["add", "Daily standup", "--recur", "daily"]
-        )
+        result = runner.invoke(app, cli_args + ["add", "Daily standup", "--recur", "daily"])
         assert result.exit_code == 0
         assert "Recurring:" in result.output
 
@@ -185,9 +169,7 @@ class TestStatusCommands:
         manager = TaskManager(storage_dir)
         task = manager.add(title="Test task")
 
-        result = runner.invoke(
-            app, cli_args + ["done", task.short_id, "--hours", "2.5"]
-        )
+        result = runner.invoke(app, cli_args + ["done", task.short_id, "--hours", "2.5"])
         assert result.exit_code == 0
         assert "Logged: 2.5h" in result.output
 
@@ -205,9 +187,7 @@ class TestStatusCommands:
         manager = TaskManager(storage_dir)
         task = manager.add(title="Test task")
 
-        result = runner.invoke(
-            app, cli_args + ["delete", task.short_id, "--force"]
-        )
+        result = runner.invoke(app, cli_args + ["delete", task.short_id, "--force"])
         assert result.exit_code == 0
         assert "Deleted" in result.output
 
@@ -220,9 +200,7 @@ class TestNoteCommand:
         manager = TaskManager(storage_dir)
         task = manager.add(title="Test task")
 
-        result = runner.invoke(
-            app, cli_args + ["note", task.short_id, "This is a note"]
-        )
+        result = runner.invoke(app, cli_args + ["note", task.short_id, "This is a note"])
         assert result.exit_code == 0
         assert "Note added" in result.output
 

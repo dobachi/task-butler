@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import fnmatch
 from enum import Enum
 from pathlib import Path
 from typing import Optional
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
 from ...core.task_manager import TaskManager
-from ...models.enums import Status, Priority
+from ...models.enums import Priority, Status
 from ...models.task import Task
-from ...storage.obsidian import ObsidianTasksFormat, ConflictResolution, ParsedObsidianTask
+from ...storage.obsidian import ObsidianTasksFormat, ParsedObsidianTask
 
 console = Console()
 
@@ -26,6 +24,7 @@ class DuplicateAction(str, Enum):
     UPDATE = "update"
     FORCE = "force"
     INTERACTIVE = "interactive"
+
 
 obsidian_app = typer.Typer(
     name="obsidian",
@@ -46,9 +45,7 @@ def export_tasks(
     output: Optional[Path] = typer.Option(
         None, "--output", "-o", help="Output file (default: stdout)"
     ),
-    include_done: bool = typer.Option(
-        False, "--include-done", help="Include completed tasks"
-    ),
+    include_done: bool = typer.Option(False, "--include-done", help="Include completed tasks"),
 ) -> None:
     """Export tasks in Obsidian-compatible format."""
     from ...config import get_config
@@ -75,7 +72,7 @@ def export_tasks(
     else:
         # Export as frontmatter format (one task per output)
         console.print("[yellow]Frontmatter export creates individual files.[/yellow]")
-        console.print(f"[dim]Use --storage-dir to specify Obsidian vault location.[/dim]")
+        console.print("[dim]Use --storage-dir to specify Obsidian vault location.[/dim]")
         console.print(f"\n[bold]Tasks ({len(tasks)}):[/bold]")
         for task in tasks:
             line = formatter.to_obsidian_line(task)
@@ -113,9 +110,7 @@ def _collect_files(path: Path, recursive: bool, pattern: str) -> list[Path]:
     return sorted([f for f in files if f.is_file()])
 
 
-def _prompt_duplicate_action(
-    existing_task: Task, parsed: ParsedObsidianTask
-) -> str:
+def _prompt_duplicate_action(existing_task: Task, parsed: ParsedObsidianTask) -> str:
     """Prompt user for action on duplicate task.
 
     Args:
@@ -125,7 +120,7 @@ def _prompt_duplicate_action(
     Returns:
         User's choice: 's' (skip), 'u' (update), 'f' (force), 'a' (all skip), 'A' (all update)
     """
-    console.print(f"\n[yellow]⚠ Duplicate found:[/yellow] \"{parsed.title}\"")
+    console.print(f'\n[yellow]⚠ Duplicate found:[/yellow] "{parsed.title}"')
     if parsed.due_date:
         console.print(f"  Due: {parsed.due_date.strftime('%Y-%m-%d')}")
     console.print(f"  Existing task: [cyan]{existing_task.short_id}[/cyan]")
@@ -277,21 +272,13 @@ def _import_single_file(
 def import_tasks(
     ctx: typer.Context,
     path: Path = typer.Argument(..., help="File or directory to import from"),
-    recursive: bool = typer.Option(
-        False, "--recursive", "-r", help="Include subdirectories"
-    ),
+    recursive: bool = typer.Option(False, "--recursive", "-r", help="Include subdirectories"),
     pattern: str = typer.Option(
         "*.md", "--pattern", "-p", help="File pattern for directory import"
     ),
-    skip: bool = typer.Option(
-        False, "--skip", help="Skip duplicate tasks (default behavior)"
-    ),
-    update: bool = typer.Option(
-        False, "--update", help="Update existing tasks on duplicate"
-    ),
-    force: bool = typer.Option(
-        False, "--force", help="Force create even if duplicate exists"
-    ),
+    skip: bool = typer.Option(False, "--skip", help="Skip duplicate tasks (default behavior)"),
+    update: bool = typer.Option(False, "--update", help="Update existing tasks on duplicate"),
+    force: bool = typer.Option(False, "--force", help="Force create even if duplicate exists"),
     interactive: bool = typer.Option(
         False, "--interactive", "-i", help="Prompt for each duplicate"
     ),
@@ -329,7 +316,9 @@ def import_tasks(
     # Determine duplicate action (mutually exclusive options)
     action_count = sum([skip, update, force, interactive])
     if action_count > 1:
-        console.print("[red]Error:[/red] Options --skip, --update, --force, --interactive are mutually exclusive")
+        console.print(
+            "[red]Error:[/red] Options --skip, --update, --force, --interactive are mutually exclusive"
+        )
         raise typer.Exit(1)
 
     if update:
@@ -359,7 +348,7 @@ def import_tasks(
     if path.is_dir():
         console.print(f"[bold]Processing {len(files)} file(s) from {path}[/bold]")
         if recursive:
-            console.print(f"[dim](recursive mode)[/dim]")
+            console.print("[dim](recursive mode)[/dim]")
 
     total_imported = []
     total_updated = []
@@ -398,7 +387,9 @@ def import_tasks(
         if total_skipped:
             console.print(f"[dim]Skipped {len(total_skipped)} duplicate(s)[/dim]")
         if total_errors:
-            console.print(f"[yellow]Warning:[/yellow] {len(total_errors)} lines could not be parsed")
+            console.print(
+                f"[yellow]Warning:[/yellow] {len(total_errors)} lines could not be parsed"
+            )
             for line_num, line_text, error in total_errors[:5]:
                 console.print(f"  Line {line_num}: {error}")
 
@@ -553,7 +544,7 @@ def resolve_conflicts(
             parsed = formatter.from_obsidian_line(obsidian_line)
 
             # Apply changes from parsed line
-            from ...models.enums import Status, Priority
+            from ...models.enums import Status
 
             if parsed.is_completed and task.status != Status.DONE:
                 task.status = Status.DONE

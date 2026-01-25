@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
+from ..models.enums import Priority, Status
 from ..models.task import Task
-from ..models.enums import Status, Priority
 from .markdown import MarkdownStorage
 
 

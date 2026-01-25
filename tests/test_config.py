@@ -1,9 +1,5 @@
 """Tests for configuration module."""
 
-import os
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from task_butler.config import Config, get_config
@@ -122,6 +118,7 @@ class TestGetConfig:
         """Test get_config returns a Config instance."""
         # Reset global config
         import task_butler.config
+
         monkeypatch.setattr(task_butler.config, "_config", None)
 
         config = get_config()
@@ -130,6 +127,7 @@ class TestGetConfig:
     def test_get_config_singleton(self, monkeypatch):
         """Test get_config returns the same instance."""
         import task_butler.config
+
         monkeypatch.setattr(task_butler.config, "_config", None)
 
         config1 = get_config()

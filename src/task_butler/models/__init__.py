@@ -1,6 +1,6 @@
 """Data models for Task Butler."""
 
-from .task import Task, Note, RecurrenceRule
-from .enums import Status, Priority, Frequency
+from .enums import Frequency, Priority, Status
+from .task import Note, RecurrenceRule, Task
 
 __all__ = ["Task", "Note", "RecurrenceRule", "Status", "Priority", "Frequency"]

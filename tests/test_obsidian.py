@@ -4,13 +4,10 @@ from datetime import datetime
 
 import pytest
 
-from task_butler.models.task import Task, RecurrenceRule
-from task_butler.models.enums import Status, Priority, Frequency
+from task_butler.models.enums import Frequency, Priority, Status
+from task_butler.models.task import RecurrenceRule, Task
 from task_butler.storage.obsidian import (
     ObsidianTasksFormat,
-    ParsedObsidianTask,
-    Conflict,
-    ConflictResolution,
 )
 
 
@@ -408,6 +405,7 @@ class TestImportDuplicateHandling:
     def manager(self, tmp_path):
         """Create a task manager with temp storage."""
         from task_butler.core.task_manager import TaskManager
+
         return TaskManager(tmp_path / "storage")
 
     @pytest.fixture
@@ -423,8 +421,8 @@ class TestImportDuplicateHandling:
     def test_import_skip_duplicates(self, manager, obsidian_file):
         """Test that duplicates are skipped by default."""
         from task_butler.cli.commands.obsidian import (
-            _import_single_file,
             DuplicateAction,
+            _import_single_file,
         )
         from task_butler.storage.obsidian import ObsidianTasksFormat
 
@@ -450,11 +448,11 @@ class TestImportDuplicateHandling:
     def test_import_update_duplicates(self, manager, obsidian_file, tmp_path):
         """Test that duplicates are updated with --update."""
         from task_butler.cli.commands.obsidian import (
-            _import_single_file,
             DuplicateAction,
+            _import_single_file,
         )
-        from task_butler.storage.obsidian import ObsidianTasksFormat
         from task_butler.models.enums import Priority
+        from task_butler.storage.obsidian import ObsidianTasksFormat
 
         # Create existing task with different priority
         existing = manager.add(
@@ -489,8 +487,8 @@ class TestImportDuplicateHandling:
     def test_import_force_duplicates(self, manager, obsidian_file):
         """Test that duplicates are created with --force."""
         from task_butler.cli.commands.obsidian import (
-            _import_single_file,
             DuplicateAction,
+            _import_single_file,
         )
         from task_butler.storage.obsidian import ObsidianTasksFormat
 
@@ -519,8 +517,8 @@ class TestImportDuplicateHandling:
     def test_import_dry_run(self, manager, obsidian_file):
         """Test that dry run doesn't create tasks."""
         from task_butler.cli.commands.obsidian import (
-            _import_single_file,
             DuplicateAction,
+            _import_single_file,
         )
         from task_butler.storage.obsidian import ObsidianTasksFormat
 

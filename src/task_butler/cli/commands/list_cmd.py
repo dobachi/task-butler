@@ -9,8 +9,8 @@ from rich.console import Console
 from rich.table import Table
 
 from ...core.task_manager import TaskManager
+from ...models.enums import Priority, Status
 from ...models.task import Task
-from ...models.enums import Status, Priority
 
 console = Console()
 
@@ -50,7 +50,7 @@ def format_task_line(task: Task) -> str:
         if due_date < today:
             parts.append(f"[red]({task.due_date.strftime('%m/%d')} overdue)[/red]")
         elif due_date == today:
-            parts.append(f"[yellow](today)[/yellow]")
+            parts.append("[yellow](today)[/yellow]")
         else:
             parts.append(f"[dim]({task.due_date.strftime('%m/%d')})[/dim]")
 
@@ -70,7 +70,9 @@ def list_tasks(
     ctx: typer.Context,
     all: bool = typer.Option(False, "--all", "-a", help="Include completed tasks"),
     status: Optional[Status] = typer.Option(None, "--status", "-s", help="Filter by status"),
-    priority: Optional[Priority] = typer.Option(None, "--priority", "-p", help="Filter by priority"),
+    priority: Optional[Priority] = typer.Option(
+        None, "--priority", "-p", help="Filter by priority"
+    ),
     project: Optional[str] = typer.Option(None, "--project", "-P", help="Filter by project"),
     tag: Optional[str] = typer.Option(None, "--tag", "-t", help="Filter by tag"),
     tree: bool = typer.Option(False, "--tree", help="Show as tree structure"),

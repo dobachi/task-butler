@@ -1,13 +1,13 @@
 """Tests for core business logic."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 
-from task_butler.models.task import Task, RecurrenceRule
-from task_butler.models.enums import Status, Priority, Frequency
-from task_butler.core.task_manager import TaskManager
 from task_butler.core.recurrence import RecurrenceGenerator
+from task_butler.core.task_manager import TaskManager
+from task_butler.models.enums import Frequency, Priority, Status
+from task_butler.models.task import RecurrenceRule, Task
 
 
 class TestRecurrenceGenerator:
@@ -362,15 +362,17 @@ class TestTaskManager:
         """Test getting task tree."""
         parent = manager.add(title="Parent")
         child1 = manager.add(title="Child 1", parent_id=parent.id)
-        grandchild = manager.add(title="Grandchild", parent_id=child1.id)
-        child2 = manager.add(title="Child 2", parent_id=parent.id)
+        _grandchild = manager.add(title="Grandchild", parent_id=child1.id)  # noqa: F841
+        _child2 = manager.add(title="Child 2", parent_id=parent.id)  # noqa: F841
 
         tree = manager.get_tree()
 
-        # Check depths
-        depths = {title: depth for (t, depth) in tree for title in [t.title]}
-        # Root tasks have depth 0, but our parent is a root task
-        # Actually the get_tree function starts from root_id=None
+        # Check structure - tree should contain all tasks
+        titles = [t.title for (t, _depth) in tree]
+        assert "Parent" in titles
+        assert "Child 1" in titles
+        assert "Grandchild" in titles
+        assert "Child 2" in titles
 
     def test_recurring_task_generation(self, manager):
         """Test automatic generation of recurring task instances."""

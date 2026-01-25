@@ -30,8 +30,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
-from ..models.task import Task, RecurrenceRule
-from ..models.enums import Status, Priority, Frequency
+from ..models.enums import Frequency, Priority, Status
+from ..models.task import RecurrenceRule, Task
 
 
 class ConflictResolution(str, Enum):
@@ -103,7 +103,9 @@ class ObsidianTasksFormat:
     DATE_PATTERN = re.compile(r"(\d{4}-\d{2}-\d{2})")
     TAG_PATTERN = re.compile(r"#(\w+)")
     CHECKBOX_PATTERN = re.compile(r"^- \[([ xX])\] ")
-    RECURRENCE_PATTERN = re.compile(r"🔁\s*([^\s🔺⏫🔼🔽⏬📅⏳🛫➕✅#]+(?:\s+[^\s🔺⏫🔼🔽⏬📅⏳🛫➕✅#]+)*)")
+    RECURRENCE_PATTERN = re.compile(
+        r"🔁\s*([^\s🔺⏫🔼🔽⏬📅⏳🛫➕✅#]+(?:\s+[^\s🔺⏫🔼🔽⏬📅⏳🛫➕✅#]+)*)"
+    )
 
     def to_obsidian_line(self, task: Task) -> str:
         """Convert a Task to an Obsidian Tasks format line.
@@ -181,7 +183,7 @@ class ObsidianTasksFormat:
             raise ValueError(f"Not a valid Obsidian Tasks line: {line}")
 
         is_completed = checkbox_match.group(1).lower() == "x"
-        content = line[checkbox_match.end():]
+        content = line[checkbox_match.end() :]
 
         # Extract tags
         tags = self.TAG_PATTERN.findall(content)
@@ -242,61 +244,75 @@ class ObsidianTasksFormat:
         # Status conflict
         task_completed = task.status == Status.DONE
         if task_completed != parsed.is_completed:
-            conflicts.append(Conflict(
-                "status",
-                task.status.value,
-                "done" if parsed.is_completed else "pending",
-            ))
+            conflicts.append(
+                Conflict(
+                    "status",
+                    task.status.value,
+                    "done" if parsed.is_completed else "pending",
+                )
+            )
 
         # Priority conflict
         if parsed.priority and task.priority != parsed.priority:
-            conflicts.append(Conflict(
-                "priority",
-                task.priority.value,
-                parsed.priority.value if parsed.priority else None,
-            ))
+            conflicts.append(
+                Conflict(
+                    "priority",
+                    task.priority.value,
+                    parsed.priority.value if parsed.priority else None,
+                )
+            )
 
         # Due date conflict
         if self._dates_differ(task.due_date, parsed.due_date):
-            conflicts.append(Conflict(
-                "due_date",
-                task.due_date.strftime("%Y-%m-%d") if task.due_date else None,
-                parsed.due_date.strftime("%Y-%m-%d") if parsed.due_date else None,
-            ))
+            conflicts.append(
+                Conflict(
+                    "due_date",
+                    task.due_date.strftime("%Y-%m-%d") if task.due_date else None,
+                    parsed.due_date.strftime("%Y-%m-%d") if parsed.due_date else None,
+                )
+            )
 
         # Scheduled date conflict
         if self._dates_differ(task.scheduled_date, parsed.scheduled_date):
-            conflicts.append(Conflict(
-                "scheduled_date",
-                task.scheduled_date.strftime("%Y-%m-%d") if task.scheduled_date else None,
-                parsed.scheduled_date.strftime("%Y-%m-%d") if parsed.scheduled_date else None,
-            ))
+            conflicts.append(
+                Conflict(
+                    "scheduled_date",
+                    task.scheduled_date.strftime("%Y-%m-%d") if task.scheduled_date else None,
+                    parsed.scheduled_date.strftime("%Y-%m-%d") if parsed.scheduled_date else None,
+                )
+            )
 
         # Start date conflict
         if self._dates_differ(task.start_date, parsed.start_date):
-            conflicts.append(Conflict(
-                "start_date",
-                task.start_date.strftime("%Y-%m-%d") if task.start_date else None,
-                parsed.start_date.strftime("%Y-%m-%d") if parsed.start_date else None,
-            ))
+            conflicts.append(
+                Conflict(
+                    "start_date",
+                    task.start_date.strftime("%Y-%m-%d") if task.start_date else None,
+                    parsed.start_date.strftime("%Y-%m-%d") if parsed.start_date else None,
+                )
+            )
 
         # Completed at conflict
         if self._dates_differ(task.completed_at, parsed.completed_at):
-            conflicts.append(Conflict(
-                "completed_at",
-                task.completed_at.strftime("%Y-%m-%d") if task.completed_at else None,
-                parsed.completed_at.strftime("%Y-%m-%d") if parsed.completed_at else None,
-            ))
+            conflicts.append(
+                Conflict(
+                    "completed_at",
+                    task.completed_at.strftime("%Y-%m-%d") if task.completed_at else None,
+                    parsed.completed_at.strftime("%Y-%m-%d") if parsed.completed_at else None,
+                )
+            )
 
         # Tags conflict
         task_tags = set(task.tags)
         parsed_tags = set(parsed.tags)
         if task_tags != parsed_tags:
-            conflicts.append(Conflict(
-                "tags",
-                ",".join(sorted(task.tags)),
-                ",".join(sorted(parsed.tags)),
-            ))
+            conflicts.append(
+                Conflict(
+                    "tags",
+                    ",".join(sorted(task.tags)),
+                    ",".join(sorted(parsed.tags)),
+                )
+            )
 
         return conflicts
 

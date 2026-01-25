@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from ..models.task import Task, RecurrenceRule
-from ..models.enums import Status, Priority, Frequency
+from ..models.enums import Priority, Status
+from ..models.task import RecurrenceRule, Task
 from ..storage.repository import TaskRepository
 from .recurrence import RecurrenceGenerator
 
@@ -260,9 +260,7 @@ class TaskManager:
             if t.recurrence_parent_id == parent_id
         ]
 
-    def find_duplicate(
-        self, title: str, due_date: datetime | None = None
-    ) -> Task | None:
+    def find_duplicate(self, title: str, due_date: datetime | None = None) -> Task | None:
         """Find a duplicate task by title and due date.
 
         Args:
@@ -284,9 +282,7 @@ class TaskManager:
         """Normalize a title for comparison."""
         return title.lower().strip()
 
-    def _dates_equal(
-        self, d1: datetime | None, d2: datetime | None
-    ) -> bool:
+    def _dates_equal(self, d1: datetime | None, d2: datetime | None) -> bool:
         """Compare date parts only (ignore time)."""
         if d1 is None and d2 is None:
             return True

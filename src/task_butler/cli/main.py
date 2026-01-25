@@ -69,8 +69,8 @@ def version() -> None:
 @app.command()
 def projects(ctx: typer.Context) -> None:
     """List all projects."""
-    from ..core.task_manager import TaskManager
     from ..config import get_config
+    from ..core.task_manager import TaskManager
 
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
@@ -90,8 +90,8 @@ def projects(ctx: typer.Context) -> None:
 @app.command()
 def tags(ctx: typer.Context) -> None:
     """List all tags."""
-    from ..core.task_manager import TaskManager
     from ..config import get_config
+    from ..core.task_manager import TaskManager
 
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
@@ -114,8 +114,8 @@ def search(
     query: str = typer.Argument(..., help="Search query"),
 ) -> None:
     """Search tasks by title or description."""
-    from ..core.task_manager import TaskManager
     from ..config import get_config
+    from ..core.task_manager import TaskManager
     from .commands.list_cmd import format_task_line
 
     config = get_config()

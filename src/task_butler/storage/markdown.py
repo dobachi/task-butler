@@ -8,8 +8,8 @@ from pathlib import Path
 
 import frontmatter
 
-from ..models.task import Task, Note, RecurrenceRule
-from ..models.enums import Status, Priority, Frequency
+from ..models.enums import Frequency, Priority, Status
+from ..models.task import Note, RecurrenceRule, Task
 
 
 class MarkdownStorage:
@@ -49,7 +49,7 @@ class MarkdownStorage:
         sanitized = sanitized.strip("_")
         # Truncate to max length
         if len(sanitized) > self.MAX_TITLE_LENGTH:
-            sanitized = sanitized[:self.MAX_TITLE_LENGTH].rstrip("_")
+            sanitized = sanitized[: self.MAX_TITLE_LENGTH].rstrip("_")
         # Fallback if empty
         if not sanitized:
             sanitized = "task"
@@ -172,6 +172,7 @@ class MarkdownStorage:
         # Hybrid mode: Add Obsidian Tasks line at the beginning
         if self.format == "hybrid":
             from .obsidian import ObsidianTasksFormat
+
             formatter = ObsidianTasksFormat()
             obsidian_line = formatter.to_obsidian_line(task)
             content_parts.append(obsidian_line)

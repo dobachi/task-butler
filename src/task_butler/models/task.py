@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from .enums import Status, Priority, Frequency
+from .enums import Frequency, Priority, Status
 
 
 class Note(BaseModel):
@@ -37,10 +37,10 @@ class Task(BaseModel):
     priority: Priority = Priority.MEDIUM
 
     # Time-related
-    due_date: datetime | None = None           # 📅 Due date
-    scheduled_date: datetime | None = None     # ⏳ Scheduled date (when to work on it)
-    start_date: datetime | None = None         # 🛫 Start date (when work begins)
-    completed_at: datetime | None = None       # ✅ Completion timestamp
+    due_date: datetime | None = None  # 📅 Due date
+    scheduled_date: datetime | None = None  # ⏳ Scheduled date (when to work on it)
+    start_date: datetime | None = None  # 🛫 Start date (when work begins)
+    completed_at: datetime | None = None  # ✅ Completion timestamp
     estimated_hours: float | None = None
     actual_hours: float | None = None
 
