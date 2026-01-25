@@ -1,5 +1,7 @@
 """Task manager - main interface for task operations."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from pathlib import Path
 

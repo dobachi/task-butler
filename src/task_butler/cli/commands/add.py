@@ -1,6 +1,9 @@
 """Add task command."""
 
-from datetime import datetime
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+import re
 from typing import Optional
 
 import typer
@@ -10,7 +13,6 @@ from ...core.task_manager import TaskManager
 from ...models.task import RecurrenceRule
 from ...models.enums import Priority, Frequency
 
-app = typer.Typer(help="Add a new task")
 console = Console()
 
 
@@ -40,12 +42,8 @@ def parse_due_date(value: str) -> datetime:
     if value_lower == "today":
         return today
     elif value_lower == "tomorrow":
-        from datetime import timedelta
-
         return today + timedelta(days=1)
     elif value_lower == "next week":
-        from datetime import timedelta
-
         return today + timedelta(weeks=1)
 
     raise typer.BadParameter(f"Invalid date format: {value}")
@@ -65,8 +63,6 @@ def parse_recurrence(value: str) -> RecurrenceRule:
         return RecurrenceRule(frequency=Frequency.YEARLY)
 
     # Try "every N days/weeks/months"
-    import re
-
     match = re.match(r"every\s+(\d+)\s+(day|week|month|year)s?", value_lower)
     if match:
         interval = int(match.group(1))
@@ -82,7 +78,6 @@ def parse_recurrence(value: str) -> RecurrenceRule:
     raise typer.BadParameter(f"Invalid recurrence format: {value}")
 
 
-@app.callback(invoke_without_command=True)
 def add_task(
     ctx: typer.Context,
     title: str = typer.Argument(..., help="Task title"),

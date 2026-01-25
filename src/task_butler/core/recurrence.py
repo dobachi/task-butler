@@ -1,5 +1,7 @@
 """Recurrence logic for generating task instances."""
 
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 from calendar import monthrange
 

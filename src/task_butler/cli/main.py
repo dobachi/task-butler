@@ -1,5 +1,7 @@
 """Main CLI application for Task Butler."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Optional
 
@@ -17,7 +19,7 @@ app = typer.Typer(
 console = Console()
 
 # Register commands
-app.add_typer(add.app, name="add")
+app.command(name="add")(add.add_task)
 app.command(name="list")(list_cmd.list_tasks)
 app.command(name="ls")(list_cmd.list_tasks)  # Alias
 app.command(name="show")(show.show_task)
@@ -53,11 +55,12 @@ def version() -> None:
 
 
 @app.command()
-def projects() -> None:
+def projects(ctx: typer.Context) -> None:
     """List all projects."""
     from ..core.task_manager import TaskManager
 
-    manager = TaskManager()
+    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
+    manager = TaskManager(storage_dir)
     project_list = manager.get_projects()
 
     if not project_list:
@@ -70,11 +73,12 @@ def projects() -> None:
 
 
 @app.command()
-def tags() -> None:
+def tags(ctx: typer.Context) -> None:
     """List all tags."""
     from ..core.task_manager import TaskManager
 
-    manager = TaskManager()
+    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
+    manager = TaskManager(storage_dir)
     tag_list = manager.get_tags()
 
     if not tag_list:
@@ -88,13 +92,15 @@ def tags() -> None:
 
 @app.command()
 def search(
+    ctx: typer.Context,
     query: str = typer.Argument(..., help="Search query"),
 ) -> None:
     """Search tasks by title or description."""
     from ..core.task_manager import TaskManager
     from .commands.list_cmd import format_task_line
 
-    manager = TaskManager()
+    storage_dir = ctx.obj.get("storage_dir") if ctx.obj else None
+    manager = TaskManager(storage_dir)
     tasks = manager.search(query)
 
     if not tasks:

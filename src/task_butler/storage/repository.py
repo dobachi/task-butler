@@ -1,5 +1,7 @@
 """Task repository for CRUD operations."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from datetime import datetime
 
