@@ -90,6 +90,12 @@ def add_task(
     due: Optional[str] = typer.Option(
         None, "--due", "-d", help="Due date (YYYY-MM-DD, today, tomorrow)"
     ),
+    scheduled: Optional[str] = typer.Option(
+        None, "--scheduled", "-s", help="Scheduled date - when to work on it (YYYY-MM-DD, today, tomorrow)"
+    ),
+    start: Optional[str] = typer.Option(
+        None, "--start", help="Start date - when work can begin (YYYY-MM-DD, today, tomorrow)"
+    ),
     tags: Optional[str] = typer.Option(
         None, "--tags", "-t", help="Comma-separated tags"
     ),
@@ -116,6 +122,8 @@ def add_task(
     try:
         # Parse optional fields
         due_date = parse_due_date(due) if due else None
+        scheduled_date = parse_due_date(scheduled) if scheduled else None
+        start_date = parse_due_date(start) if start else None
         tag_list = [t.strip() for t in tags.split(",")] if tags else None
         dep_list = [d.strip() for d in depends.split(",")] if depends else None
         recurrence = parse_recurrence(recur) if recur else None
@@ -125,6 +133,8 @@ def add_task(
             description=description or "",
             priority=priority,
             due_date=due_date,
+            scheduled_date=scheduled_date,
+            start_date=start_date,
             tags=tag_list,
             project=project,
             parent_id=parent,
@@ -138,6 +148,10 @@ def add_task(
 
         if task.due_date:
             console.print(f"  Due: {task.due_date.strftime('%Y-%m-%d')}")
+        if task.scheduled_date:
+            console.print(f"  Scheduled: {task.scheduled_date.strftime('%Y-%m-%d')}")
+        if task.start_date:
+            console.print(f"  Start: {task.start_date.strftime('%Y-%m-%d')}")
         if task.project:
             console.print(f"  Project: {task.project}")
         if task.recurrence:

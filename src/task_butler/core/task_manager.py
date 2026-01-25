@@ -25,6 +25,8 @@ class TaskManager:
         description: str = "",
         priority: Priority = Priority.MEDIUM,
         due_date: datetime | None = None,
+        scheduled_date: datetime | None = None,
+        start_date: datetime | None = None,
         tags: list[str] | None = None,
         project: str | None = None,
         parent_id: str | None = None,
@@ -54,6 +56,8 @@ class TaskManager:
             description=description,
             priority=priority,
             due_date=due_date,
+            scheduled_date=scheduled_date,
+            start_date=start_date,
             tags=tags or [],
             project=project,
             parent_id=parent_id,
@@ -93,6 +97,7 @@ class TaskManager:
             Priority.HIGH: 1,
             Priority.MEDIUM: 2,
             Priority.LOW: 3,
+            Priority.LOWEST: 4,
         }
 
         def sort_key(t: Task) -> tuple:
@@ -182,6 +187,8 @@ class TaskManager:
         description: str | None = None,
         priority: Priority | None = None,
         due_date: datetime | None = None,
+        scheduled_date: datetime | None = None,
+        start_date: datetime | None = None,
         tags: list[str] | None = None,
         project: str | None = None,
         estimated_hours: float | None = None,
@@ -199,6 +206,10 @@ class TaskManager:
             task.priority = priority
         if due_date is not None:
             task.due_date = due_date
+        if scheduled_date is not None:
+            task.scheduled_date = scheduled_date
+        if start_date is not None:
+            task.start_date = start_date
         if tags is not None:
             task.tags = tags
         if project is not None:

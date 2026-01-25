@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 
 from .commands import add, list_cmd, show, status
+from .commands.obsidian import obsidian_app
 
 app = typer.Typer(
     name="task-butler",
@@ -28,6 +29,9 @@ app.command(name="done")(status.done_task)
 app.command(name="cancel")(status.cancel_task)
 app.command(name="delete")(status.delete_task)
 app.command(name="note")(status.add_note)
+
+# Register sub-apps
+app.add_typer(obsidian_app, name="obsidian")
 
 
 @app.callback()

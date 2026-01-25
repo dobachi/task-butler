@@ -11,6 +11,7 @@ Your digital butler for task management. A CLI tool that helps you manage tasks,
 - **Hierarchical Tasks**: Create parent/child relationships between tasks
 - **Dependencies**: Define task dependencies to track blocking work
 - **Recurring Tasks**: Set up daily, weekly, monthly, or yearly recurring tasks
+- **Obsidian Integration**: Export/import in Obsidian Tasks plugin compatible format
 - **Rich Output**: Beautiful terminal output with colors and formatting
 - **Git Friendly**: All data stored in plain text, easy to version control
 
@@ -237,10 +238,10 @@ uv run pytest --cov=task_butler
   - Smart suggestions
   - Daily planning assistance
 
-- [ ] **Phase 3**: Obsidian Integration
+- [x] **Phase 3**: Obsidian Integration
   - Use Obsidian vault as storage directory
-  - Obsidian Tasks plugin compatibility
-  - Bidirectional sync with Obsidian notes
+  - Obsidian Tasks plugin compatibility (export/import)
+  - Conflict detection and resolution
 
 - [ ] **Phase 4**: Advanced Features
   - File watching (auto-import from Markdown)
@@ -252,33 +253,49 @@ uv run pytest --cov=task_butler
   - Standalone executables
   - Extended documentation
 
-## Obsidian Integration (Planned)
+## Obsidian Integration
 
-Task Butler is designed to work with [Obsidian](https://obsidian.md/) vaults:
+Task Butler works with [Obsidian](https://obsidian.md/) vaults and supports a format compatible with the [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) plugin.
 
-### Basic Usage with Obsidian
+See the [Obsidian Integration Guide](docs/OBSIDIAN.en.md) for details.
+
+### Quick Start
 
 ```bash
 # Use Obsidian vault as storage
-task-butler --storage-dir ~/Documents/MyVault/Tasks list
-
-# Or set via environment variable
 export TASK_BUTLER_DIR=~/Documents/MyVault/Tasks
-task-butler list
+
+# Create task with date fields
+task-butler add "Meeting prep" --due 2025-02-01 --scheduled 2025-01-25 --priority high
+
+# Export in Obsidian Tasks format
+task-butler obsidian export
+# → - [ ] Meeting prep ⏫ 📅 2025-02-01 ⏳ 2025-01-25 ➕ 2025-01-25
+
+# Import from Obsidian note
+task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md
 ```
 
-### Obsidian Tasks Plugin Compatibility (Planned)
+### Supported Emojis
 
-Future versions will support [Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks) format:
+| Emoji | Meaning | CLI Option |
+|-------|---------|------------|
+| 📅 | Due date | `--due` |
+| ⏳ | Scheduled date | `--scheduled` |
+| 🛫 | Start date | `--start` |
+| 🔺⏫🔼🔽⏬ | Priority | `--priority` |
+| ✅ | Completed date | Auto-set |
+| 🔁 | Recurrence | `--recur` |
 
-```markdown
-- [ ] Task name 📅 2025-02-01 ⏳ 2025-01-25 🔺
+### Obsidian Commands
+
+```bash
+task-butler obsidian export    # Export in Obsidian format
+task-butler obsidian import    # Import from Obsidian file
+task-butler obsidian check     # Detect conflicts with frontmatter
+task-butler obsidian resolve   # Resolve conflicts
+task-butler obsidian format    # Display single task in Obsidian format
 ```
-
-Features planned:
-- Export tasks in Obsidian Tasks format
-- Import tasks from Obsidian Tasks format
-- Emoji-based priority and date indicators
 
 ## License
 

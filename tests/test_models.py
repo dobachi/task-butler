@@ -143,6 +143,8 @@ class TestTask:
 
         assert task.status == Status.DONE
         assert task.actual_hours == 1.5
+        assert task.completed_at is not None
+        assert isinstance(task.completed_at, datetime)
 
     def test_cancel_task(self):
         """Test cancelling a task."""
@@ -191,3 +193,27 @@ class TestTask:
         task = Task(title="Test")
         assert len(task.short_id) == 8
         assert task.id.startswith(task.short_id)
+
+    def test_task_with_obsidian_date_fields(self):
+        """Test task with Obsidian-compatible date fields."""
+        due = datetime(2025, 2, 1)
+        scheduled = datetime(2025, 1, 25)
+        start = datetime(2025, 1, 20)
+
+        task = Task(
+            title="Obsidian task",
+            due_date=due,
+            scheduled_date=scheduled,
+            start_date=start,
+        )
+
+        assert task.due_date == due
+        assert task.scheduled_date == scheduled
+        assert task.start_date == start
+        assert task.completed_at is None
+
+    def test_priority_lowest(self):
+        """Test LOWEST priority level."""
+        task = Task(title="Low priority task", priority=Priority.LOWEST)
+        assert task.priority == Priority.LOWEST
+        assert task.priority.value == "lowest"

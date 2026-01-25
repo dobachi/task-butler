@@ -13,8 +13,17 @@ class Status(str, Enum):
 
 
 class Priority(str, Enum):
-    """Task priority levels."""
+    """Task priority levels.
 
+    Maps to Obsidian Tasks emoji:
+    - LOWEST: ⏬
+    - LOW: 🔽
+    - MEDIUM: 🔼
+    - HIGH: ⏫
+    - URGENT: 🔺
+    """
+
+    LOWEST = "lowest"
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"

@@ -37,7 +37,10 @@ class Task(BaseModel):
     priority: Priority = Priority.MEDIUM
 
     # Time-related
-    due_date: datetime | None = None
+    due_date: datetime | None = None           # 📅 Due date
+    scheduled_date: datetime | None = None     # ⏳ Scheduled date (when to work on it)
+    start_date: datetime | None = None         # 🛫 Start date (when work begins)
+    completed_at: datetime | None = None       # ✅ Completion timestamp
     estimated_hours: float | None = None
     actual_hours: float | None = None
 
@@ -71,6 +74,7 @@ class Task(BaseModel):
     def complete(self, actual_hours: float | None = None) -> None:
         """Mark task as done."""
         self.status = Status.DONE
+        self.completed_at = datetime.now()
         if actual_hours is not None:
             self.actual_hours = actual_hours
         self.updated_at = datetime.now()

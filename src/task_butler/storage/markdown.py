@@ -39,6 +39,12 @@ class MarkdownStorage:
 
         if task.due_date:
             metadata["due_date"] = task.due_date.isoformat()
+        if task.scheduled_date:
+            metadata["scheduled_date"] = task.scheduled_date.isoformat()
+        if task.start_date:
+            metadata["start_date"] = task.start_date.isoformat()
+        if task.completed_at:
+            metadata["completed_at"] = task.completed_at.isoformat()
         if task.estimated_hours:
             metadata["estimated_hours"] = task.estimated_hours
         if task.actual_hours:
@@ -147,6 +153,15 @@ class MarkdownStorage:
             priority=Priority(metadata["priority"]),
             due_date=datetime.fromisoformat(metadata["due_date"])
             if metadata.get("due_date")
+            else None,
+            scheduled_date=datetime.fromisoformat(metadata["scheduled_date"])
+            if metadata.get("scheduled_date")
+            else None,
+            start_date=datetime.fromisoformat(metadata["start_date"])
+            if metadata.get("start_date")
+            else None,
+            completed_at=datetime.fromisoformat(metadata["completed_at"])
+            if metadata.get("completed_at")
             else None,
             estimated_hours=metadata.get("estimated_hours"),
             actual_hours=metadata.get("actual_hours"),

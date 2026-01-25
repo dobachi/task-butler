@@ -11,6 +11,7 @@
 - **階層構造タスク**: 親子関係でタスクを構造化
 - **依存関係**: タスク間の依存関係を定義し、ブロッキングを追跡
 - **繰り返しタスク**: 日次、週次、月次、年次の繰り返しタスクを設定
+- **Obsidian連携**: Obsidian Tasksプラグイン互換フォーマットでのエクスポート/インポート
 - **リッチな出力**: カラーとフォーマットによる美しいターミナル出力
 - **Git対応**: 全てのデータはプレーンテキストで保存、バージョン管理が容易
 
@@ -237,10 +238,10 @@ uv run pytest --cov=task_butler
   - スマート提案
   - 日次計画アシスタント
 
-- [ ] **Phase 3**: Obsidian連携
+- [x] **Phase 3**: Obsidian連携
   - ObsidianのVaultをストレージディレクトリとして使用
-  - Obsidian Tasksプラグイン互換性
-  - Obsidianノートとの双方向同期
+  - Obsidian Tasksプラグイン互換性（エクスポート/インポート）
+  - 差分検知・解決機能
 
 - [ ] **Phase 4**: 高度な機能
   - ファイル監視（Markdownからの自動インポート）
@@ -252,33 +253,49 @@ uv run pytest --cov=task_butler
   - スタンドアロン実行ファイル
   - ドキュメント拡充
 
-## Obsidian連携（計画中）
+## Obsidian連携
 
-Task Butlerは[Obsidian](https://obsidian.md/)のVaultと連携して動作するよう設計されています：
+Task Butlerは[Obsidian](https://obsidian.md/)のVaultと連携して動作します。[Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks)プラグインと互換性のあるフォーマットをサポートしています。
 
-### ObsidianでのベースNote使用
+詳細は[Obsidian連携ガイド](docs/OBSIDIAN.md)を参照してください。
+
+### クイックスタート
 
 ```bash
 # ObsidianのVaultをストレージとして使用
-task-butler --storage-dir ~/Documents/MyVault/Tasks list
-
-# または環境変数で設定
 export TASK_BUTLER_DIR=~/Documents/MyVault/Tasks
-task-butler list
+
+# 日付フィールドを指定してタスク作成
+task-butler add "会議準備" --due 2025-02-01 --scheduled 2025-01-25 --priority high
+
+# Obsidian Tasks形式でエクスポート
+task-butler obsidian export
+# → - [ ] 会議準備 ⏫ 📅 2025-02-01 ⏳ 2025-01-25 ➕ 2025-01-25
+
+# Obsidianノートからインポート
+task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md
 ```
 
-### Obsidian Tasksプラグイン互換性（計画中）
+### サポートする絵文字
 
-将来のバージョンでは[Obsidian Tasks](https://github.com/obsidian-tasks-group/obsidian-tasks)フォーマットをサポート予定：
+| 絵文字 | 意味 | CLIオプション |
+|--------|------|--------------|
+| 📅 | 期限日 | `--due` |
+| ⏳ | 予定日 | `--scheduled` |
+| 🛫 | 開始日 | `--start` |
+| 🔺⏫🔼🔽⏬ | 優先度 | `--priority` |
+| ✅ | 完了日 | 自動設定 |
+| 🔁 | 繰り返し | `--recur` |
 
-```markdown
-- [ ] タスク名 📅 2025-02-01 ⏳ 2025-01-25 🔺
+### Obsidianコマンド
+
+```bash
+task-butler obsidian export    # Obsidian形式でエクスポート
+task-butler obsidian import    # Obsidianファイルからインポート
+task-butler obsidian check     # フロントマターとの差分を検知
+task-butler obsidian resolve   # 差分を解決
+task-butler obsidian format    # 単一タスクをObsidian形式で表示
 ```
-
-計画中の機能:
-- Obsidian Tasks形式でのエクスポート
-- Obsidian Tasks形式からのインポート
-- 絵文字による優先度・日付の表現
 
 ## ライセンス
 
