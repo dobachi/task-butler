@@ -336,3 +336,209 @@ class TestRecurrenceParsing:
         """Test parsing invalid recurrence text."""
         result = formatter.parse_recurrence("invalid text")
         assert result is None
+
+
+class TestDirectoryImport:
+    """Tests for directory import functionality."""
+
+    def test_collect_files_single_file(self, tmp_path):
+        """Test collecting a single file."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        file = tmp_path / "test.md"
+        file.write_text("- [ ] Task")
+
+        files = _collect_files(file, recursive=False, pattern="*.md")
+        assert len(files) == 1
+        assert files[0] == file
+
+    def test_collect_files_directory(self, tmp_path):
+        """Test collecting files from directory."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        (tmp_path / "file1.md").write_text("- [ ] Task 1")
+        (tmp_path / "file2.md").write_text("- [ ] Task 2")
+        (tmp_path / "ignored.txt").write_text("Not markdown")
+
+        files = _collect_files(tmp_path, recursive=False, pattern="*.md")
+        assert len(files) == 2
+        assert all(f.suffix == ".md" for f in files)
+
+    def test_collect_files_recursive(self, tmp_path):
+        """Test collecting files recursively."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        (tmp_path / "root.md").write_text("- [ ] Root task")
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+        (subdir / "sub.md").write_text("- [ ] Sub task")
+
+        files = _collect_files(tmp_path, recursive=True, pattern="*.md")
+        assert len(files) == 2
+
+    def test_collect_files_not_recursive(self, tmp_path):
+        """Test that non-recursive mode ignores subdirectories."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        (tmp_path / "root.md").write_text("- [ ] Root task")
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+        (subdir / "sub.md").write_text("- [ ] Sub task")
+
+        files = _collect_files(tmp_path, recursive=False, pattern="*.md")
+        assert len(files) == 1
+        assert files[0].name == "root.md"
+
+    def test_collect_files_custom_pattern(self, tmp_path):
+        """Test collecting files with custom pattern."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        (tmp_path / "daily.md").write_text("- [ ] Daily")
+        (tmp_path / "daily-2025-01-01.md").write_text("- [ ] Dated")
+        (tmp_path / "weekly.md").write_text("- [ ] Weekly")
+
+        files = _collect_files(tmp_path, recursive=False, pattern="daily*.md")
+        assert len(files) == 2
+
+
+class TestImportDuplicateHandling:
+    """Tests for import duplicate handling."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create a task manager with temp storage."""
+        from task_butler.core.task_manager import TaskManager
+        return TaskManager(tmp_path / "storage")
+
+    @pytest.fixture
+    def obsidian_file(self, tmp_path):
+        """Create a test obsidian file."""
+        file = tmp_path / "tasks.md"
+        file.write_text("""# Tasks
+- [ ] New task 📅 2025-02-01
+- [ ] Duplicate task 📅 2025-02-15
+""")
+        return file
+
+    def test_import_skip_duplicates(self, manager, obsidian_file):
+        """Test that duplicates are skipped by default."""
+        from task_butler.cli.commands.obsidian import (
+            _import_single_file,
+            DuplicateAction,
+        )
+        from task_butler.storage.obsidian import ObsidianTasksFormat
+
+        # Create existing task
+        manager.add(title="Duplicate task", due_date=datetime(2025, 2, 15))
+
+        formatter = ObsidianTasksFormat()
+        global_action = {}
+
+        imported, updated, skipped, errors = _import_single_file(
+            obsidian_file,
+            manager,
+            formatter,
+            DuplicateAction.SKIP,
+            dry_run=False,
+            global_action=global_action,
+        )
+
+        assert len(imported) == 1  # Only "New task" imported
+        assert len(skipped) == 1  # "Duplicate task" skipped
+        assert skipped[0][0].title == "Duplicate task"
+
+    def test_import_update_duplicates(self, manager, obsidian_file, tmp_path):
+        """Test that duplicates are updated with --update."""
+        from task_butler.cli.commands.obsidian import (
+            _import_single_file,
+            DuplicateAction,
+        )
+        from task_butler.storage.obsidian import ObsidianTasksFormat
+        from task_butler.models.enums import Priority
+
+        # Create existing task with different priority
+        existing = manager.add(
+            title="Duplicate task",
+            due_date=datetime(2025, 2, 15),
+            priority=Priority.LOW,
+        )
+
+        # Create file with HIGH priority task
+        file = tmp_path / "update_test.md"
+        file.write_text("- [ ] Duplicate task ⏫ 📅 2025-02-15")
+
+        formatter = ObsidianTasksFormat()
+        global_action = {}
+
+        imported, updated, skipped, errors = _import_single_file(
+            file,
+            manager,
+            formatter,
+            DuplicateAction.UPDATE,
+            dry_run=False,
+            global_action=global_action,
+        )
+
+        assert len(imported) == 0
+        assert len(updated) == 1
+
+        # Check that priority was updated
+        refreshed = manager.get(existing.id)
+        assert refreshed.priority == Priority.HIGH
+
+    def test_import_force_duplicates(self, manager, obsidian_file):
+        """Test that duplicates are created with --force."""
+        from task_butler.cli.commands.obsidian import (
+            _import_single_file,
+            DuplicateAction,
+        )
+        from task_butler.storage.obsidian import ObsidianTasksFormat
+
+        # Create existing task
+        manager.add(title="Duplicate task", due_date=datetime(2025, 2, 15))
+
+        formatter = ObsidianTasksFormat()
+        global_action = {}
+
+        imported, updated, skipped, errors = _import_single_file(
+            obsidian_file,
+            manager,
+            formatter,
+            DuplicateAction.FORCE,
+            dry_run=False,
+            global_action=global_action,
+        )
+
+        assert len(imported) == 2  # Both tasks created
+        assert len(skipped) == 0
+
+        # Should have 3 total tasks now (1 existing + 2 new)
+        all_tasks = manager.list(include_done=True)
+        assert len(all_tasks) == 3
+
+    def test_import_dry_run(self, manager, obsidian_file):
+        """Test that dry run doesn't create tasks."""
+        from task_butler.cli.commands.obsidian import (
+            _import_single_file,
+            DuplicateAction,
+        )
+        from task_butler.storage.obsidian import ObsidianTasksFormat
+
+        formatter = ObsidianTasksFormat()
+        global_action = {}
+
+        imported, updated, skipped, errors = _import_single_file(
+            obsidian_file,
+            manager,
+            formatter,
+            DuplicateAction.SKIP,
+            dry_run=True,
+            global_action=global_action,
+        )
+
+        # Should return parsed tasks but not actually create them
+        assert len(imported) == 2
+
+        # No tasks should exist in storage
+        all_tasks = manager.list(include_done=True)
+        assert len(all_tasks) == 0

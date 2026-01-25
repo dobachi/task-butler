@@ -121,11 +121,23 @@ task-butler obsidian format abc12345
 ### Obsidianからインポート
 
 ```bash
-# Markdownファイルからタスクをインポート
+# 単一ファイルからインポート
 task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md
 
+# ディレクトリから一括インポート
+task-butler obsidian import ~/Documents/MyVault/daily/
+
+# サブディレクトリも含めて再帰的にインポート
+task-butler obsidian import ~/Documents/MyVault/ --recursive
+
 # プレビュー（実際には作成しない）
-task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md --dry-run
+task-butler obsidian import ~/Documents/MyVault/daily/ --dry-run
+
+# 重複タスクを更新
+task-butler obsidian import ~/Documents/MyVault/daily/ --update
+
+# 重複確認をインタラクティブに
+task-butler obsidian import ~/Documents/MyVault/daily/ --interactive
 ```
 
 ## コマンドリファレンス
@@ -161,15 +173,43 @@ task-butler obsidian export [オプション]
 
 #### `obsidian import`
 
-Obsidian MarkdownファイルからTask Butlerにタスクをインポートします。
+Obsidian MarkdownファイルまたはディレクトリからTask Butlerにタスクをインポートします。
 
 ```bash
-task-butler obsidian import <ファイル> [オプション]
+task-butler obsidian import <パス> [オプション]
 ```
 
 | オプション | 短縮形 | 説明 |
 |-----------|--------|------|
+| `--recursive` | `-r` | サブディレクトリも含める（ディレクトリ指定時） |
+| `--pattern` | `-p` | ファイルパターン（デフォルト: `*.md`） |
+| `--skip` | - | 重複タスクをスキップ（デフォルト） |
+| `--update` | - | 重複タスクを既存タスクで更新 |
+| `--force` | - | 重複でも新規タスクとして作成 |
+| `--interactive` | `-i` | 重複ごとにユーザーに確認 |
 | `--dry-run` | `-n` | 実際には作成せずプレビューのみ |
+
+**重複検知について:**
+
+タスクの重複は「タイトル」と「期限日」の組み合わせで判定されます。同じタイトルと期限日を持つタスクが既に存在する場合、指定したオプションに応じて処理されます。
+
+- `--skip`（デフォルト）: 重複をスキップして次のタスクへ
+- `--update`: 既存タスクの優先度、日付、タグを更新
+- `--force`: 重複を無視して新規タスクとして作成
+- `--interactive`: 重複ごとに `[s]kip, [u]pdate, [f]orce, [a]ll skip, [A]ll update` を選択
+
+**ディレクトリインポートの例:**
+
+```bash
+# dailyディレクトリ内のすべてのmdファイルをインポート
+task-butler obsidian import ~/Vault/daily/
+
+# daily-*.md のパターンにマッチするファイルのみ
+task-butler obsidian import ~/Vault/daily/ --pattern "daily-*.md"
+
+# Vault全体を再帰的にインポート（プレビュー）
+task-butler obsidian import ~/Vault/ --recursive --dry-run
+```
 
 #### `obsidian check`
 
@@ -360,8 +400,14 @@ task-butler obsidian export --output ~/Documents/MyVault/Tasks/summary.md
 3. Task Butlerで分析・レポート生成
 
 ```bash
-# デイリーノートからインポート
+# デイリーノートディレクトリから一括インポート（重複はスキップ）
+task-butler obsidian import ~/Documents/MyVault/daily/
+
+# または特定ファイルのみ
 task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md
+
+# 既存タスクを更新する場合
+task-butler obsidian import ~/Documents/MyVault/daily/ --update
 
 # タスク一覧確認
 task-butler list

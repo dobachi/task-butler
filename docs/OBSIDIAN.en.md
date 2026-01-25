@@ -121,11 +121,23 @@ Copy and paste into your Obsidian notes.
 ### Import from Obsidian
 
 ```bash
-# Import tasks from a Markdown file
+# Import from a single file
 task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md
 
+# Bulk import from directory
+task-butler obsidian import ~/Documents/MyVault/daily/
+
+# Recursive import including subdirectories
+task-butler obsidian import ~/Documents/MyVault/ --recursive
+
 # Preview (don't actually create)
-task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md --dry-run
+task-butler obsidian import ~/Documents/MyVault/daily/ --dry-run
+
+# Update existing tasks on duplicate
+task-butler obsidian import ~/Documents/MyVault/daily/ --update
+
+# Interactive duplicate handling
+task-butler obsidian import ~/Documents/MyVault/daily/ --interactive
 ```
 
 ## Command Reference
@@ -161,15 +173,43 @@ task-butler obsidian export [options]
 
 #### `obsidian import`
 
-Import tasks from an Obsidian Markdown file to Task Butler.
+Import tasks from an Obsidian Markdown file or directory to Task Butler.
 
 ```bash
-task-butler obsidian import <file> [options]
+task-butler obsidian import <path> [options]
 ```
 
 | Option | Short | Description |
 |--------|-------|-------------|
+| `--recursive` | `-r` | Include subdirectories (when path is a directory) |
+| `--pattern` | `-p` | File pattern (default: `*.md`) |
+| `--skip` | - | Skip duplicate tasks (default) |
+| `--update` | - | Update existing tasks on duplicate |
+| `--force` | - | Create new task even if duplicate exists |
+| `--interactive` | `-i` | Prompt for each duplicate |
 | `--dry-run` | `-n` | Preview only, don't actually create |
+
+**About Duplicate Detection:**
+
+Task duplication is determined by the combination of "title" and "due date". When a task with the same title and due date already exists, it is handled according to the specified option.
+
+- `--skip` (default): Skip the duplicate and proceed to the next task
+- `--update`: Update the existing task's priority, dates, and tags
+- `--force`: Ignore duplicate and create as a new task
+- `--interactive`: Choose `[s]kip, [u]pdate, [f]orce, [a]ll skip, [A]ll update` for each duplicate
+
+**Directory Import Examples:**
+
+```bash
+# Import all md files in the daily directory
+task-butler obsidian import ~/Vault/daily/
+
+# Only files matching daily-*.md pattern
+task-butler obsidian import ~/Vault/daily/ --pattern "daily-*.md"
+
+# Recursively import entire Vault (preview)
+task-butler obsidian import ~/Vault/ --recursive --dry-run
+```
 
 #### `obsidian check`
 
@@ -360,8 +400,14 @@ task-butler obsidian export --output ~/Documents/MyVault/Tasks/summary.md
 3. Use Task Butler for analysis and reporting
 
 ```bash
-# Import from daily note
+# Bulk import from daily notes directory (skip duplicates)
+task-butler obsidian import ~/Documents/MyVault/daily/
+
+# Or import specific file only
 task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md
+
+# Update existing tasks instead of skipping
+task-butler obsidian import ~/Documents/MyVault/daily/ --update
 
 # View task list
 task-butler list

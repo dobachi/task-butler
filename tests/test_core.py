@@ -390,3 +390,85 @@ class TestTaskManager:
 
         # Should generate next instance when we call generate again
         # (Note: in real usage, complete() auto-generates next)
+
+
+class TestFindDuplicate:
+    """Tests for duplicate detection."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create a task manager with temp storage."""
+        return TaskManager(tmp_path)
+
+    def test_find_duplicate_exact_match(self, manager):
+        """Test finding exact duplicate by title and due date."""
+        due = datetime(2025, 2, 1)
+        manager.add(title="Meeting prep", due_date=due)
+
+        duplicate = manager.find_duplicate("Meeting prep", due)
+        assert duplicate is not None
+        assert duplicate.title == "Meeting prep"
+
+    def test_find_duplicate_case_insensitive(self, manager):
+        """Test that title comparison is case-insensitive."""
+        due = datetime(2025, 2, 1)
+        manager.add(title="Meeting Prep", due_date=due)
+
+        duplicate = manager.find_duplicate("meeting prep", due)
+        assert duplicate is not None
+
+    def test_find_duplicate_title_normalized(self, manager):
+        """Test that title is trimmed and normalized."""
+        due = datetime(2025, 2, 1)
+        manager.add(title="Meeting prep", due_date=due)
+
+        duplicate = manager.find_duplicate("  Meeting Prep  ", due)
+        assert duplicate is not None
+
+    def test_find_duplicate_no_due_date(self, manager):
+        """Test finding duplicate when both have no due date."""
+        manager.add(title="Simple task")
+
+        duplicate = manager.find_duplicate("Simple task", None)
+        assert duplicate is not None
+
+    def test_find_duplicate_date_only(self, manager):
+        """Test that only date part is compared (time ignored)."""
+        # Task with specific time
+        manager.add(title="Morning meeting", due_date=datetime(2025, 2, 1, 10, 30))
+
+        # Search with same date but different time
+        duplicate = manager.find_duplicate("Morning meeting", datetime(2025, 2, 1, 14, 0))
+        assert duplicate is not None
+
+    def test_find_duplicate_no_match_different_title(self, manager):
+        """Test no match when title differs."""
+        due = datetime(2025, 2, 1)
+        manager.add(title="Meeting prep", due_date=due)
+
+        duplicate = manager.find_duplicate("Different task", due)
+        assert duplicate is None
+
+    def test_find_duplicate_no_match_different_date(self, manager):
+        """Test no match when date differs."""
+        manager.add(title="Meeting prep", due_date=datetime(2025, 2, 1))
+
+        duplicate = manager.find_duplicate("Meeting prep", datetime(2025, 2, 2))
+        assert duplicate is None
+
+    def test_find_duplicate_no_match_one_has_date(self, manager):
+        """Test no match when one has due date and other doesn't."""
+        manager.add(title="Meeting prep", due_date=datetime(2025, 2, 1))
+
+        # Search without due date should not match
+        duplicate = manager.find_duplicate("Meeting prep", None)
+        assert duplicate is None
+
+    def test_find_duplicate_includes_done_tasks(self, manager):
+        """Test that completed tasks are also checked for duplicates."""
+        task = manager.add(title="Done task", due_date=datetime(2025, 2, 1))
+        manager.complete(task.id)
+
+        duplicate = manager.find_duplicate("Done task", datetime(2025, 2, 1))
+        assert duplicate is not None
+        assert duplicate.status == Status.DONE
