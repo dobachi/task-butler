@@ -44,12 +44,27 @@ task-butler add "重大なバグを修正" --priority urgent --due 2025-01-30
 # 全タスクを一覧表示
 task-butler list
 
-# タスクの作業を開始
-task-butler start abc123
+# タスクの作業を開始（ショートID - 先頭8文字を使用）
+task-butler start abc12345
 
 # タスクを完了にする
-task-butler done abc123
+task-butler done abc12345
 ```
+
+### ショートIDサポート
+
+タスクIDを受け取るすべてのコマンドで**ショートID**（UUIDの先頭8文字）が使用できます：
+
+```bash
+# これらは同等:
+task-butler show abc12345-1234-5678-9abc-def012345678
+task-butler show abc12345
+
+# 一意であればさらに短いプレフィックスも可能:
+task-butler done abc1
+```
+
+ショートIDが複数のタスクにマッチする場合、マッチするタスクの一覧が表示されます。
 
 ## コマンド
 
@@ -164,7 +179,9 @@ task-butler add --help
 
 ## データストレージ
 
-タスクは `~/.task-butler/tasks/` にYAMLフロントマター付きのMarkdownファイルとして保存されます：
+タスクは `~/.task-butler/tasks/` にYAMLフロントマター付きのMarkdownファイルとして保存されます。
+
+**ファイル名形式**: `{short_id}_{title}.md`（例: `abc12345_認証機能の実装.md`）
 
 ```markdown
 ---
@@ -188,6 +205,40 @@ APIのJWTベース認証を実装する。
 
 - [2025-01-25 10:30] 調査開始
 - [2025-01-25 14:30] JWTライブラリ選定完了
+```
+
+### ストレージ形式
+
+2つのストレージ形式をサポート：
+
+- **frontmatter**（デフォルト）: YAMLフロントマターのみ
+- **hybrid**: YAMLフロントマター + Obsidian Tasks行（Obsidian連携向け）
+
+ハイブリッド形式の例：
+```markdown
+---
+id: abc12345-...
+title: 会議準備
+...
+---
+
+- [ ] 会議準備 ⏫ 📅 2025-02-01
+
+説明文...
+```
+
+### 設定
+
+設定は以下の順序で優先されます：
+
+1. **CLIオプション**: `--format hybrid`
+2. **環境変数**: `TASK_BUTLER_FORMAT=hybrid`
+3. **設定ファイル**: `~/.task-butler/config.toml`
+
+```toml
+# ~/.task-butler/config.toml
+[storage]
+format = "hybrid"  # "frontmatter" または "hybrid"
 ```
 
 ### カスタムストレージ場所

@@ -44,12 +44,27 @@ task-butler add "Fix critical bug" --priority urgent --due 2025-01-30
 # List all tasks
 task-butler list
 
-# Start working on a task
-task-butler start abc123
+# Start working on a task (use short ID - first 8 chars)
+task-butler start abc12345
 
 # Mark a task as done
-task-butler done abc123
+task-butler done abc12345
 ```
+
+### Short ID Support
+
+All commands that take a task ID support **short IDs** (first 8 characters of the UUID):
+
+```bash
+# These are equivalent:
+task-butler show abc12345-1234-5678-9abc-def012345678
+task-butler show abc12345
+
+# Even shorter prefixes work if unique:
+task-butler done abc1
+```
+
+If a short ID matches multiple tasks, you'll see a list of matching tasks to choose from.
 
 ## Commands
 
@@ -164,7 +179,9 @@ task-butler add --help
 
 ## Data Storage
 
-Tasks are stored in `~/.task-butler/tasks/` as Markdown files with YAML frontmatter:
+Tasks are stored in `~/.task-butler/tasks/` as Markdown files with YAML frontmatter.
+
+**Filename format**: `{short_id}_{title}.md` (e.g., `abc12345_Implement_authentication.md`)
 
 ```markdown
 ---
@@ -188,6 +205,40 @@ Implement JWT-based authentication for the API.
 
 - [2025-01-25 10:30] Started research
 - [2025-01-25 14:30] JWT library selected
+```
+
+### Storage Format
+
+Two storage formats are supported:
+
+- **frontmatter** (default): YAML frontmatter only
+- **hybrid**: YAML frontmatter + Obsidian Tasks line (for better Obsidian integration)
+
+Hybrid format example:
+```markdown
+---
+id: abc12345-...
+title: Meeting prep
+...
+---
+
+- [ ] Meeting prep ⏫ 📅 2025-02-01
+
+Description here...
+```
+
+### Configuration
+
+Configuration can be set via (in order of precedence):
+
+1. **CLI option**: `--format hybrid`
+2. **Environment variable**: `TASK_BUTLER_FORMAT=hybrid`
+3. **Config file**: `~/.task-butler/config.toml`
+
+```toml
+# ~/.task-butler/config.toml
+[storage]
+format = "hybrid"  # "frontmatter" or "hybrid"
 ```
 
 ### Custom Storage Location
