@@ -1,6 +1,6 @@
 """Storage layer for Task Butler."""
 
 from .markdown import MarkdownStorage
-from .repository import TaskRepository
+from .repository import AmbiguousTaskIdError, TaskRepository
 
-__all__ = ["MarkdownStorage", "TaskRepository"]
+__all__ = ["AmbiguousTaskIdError", "MarkdownStorage", "TaskRepository"]

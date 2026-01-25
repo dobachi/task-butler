@@ -8,8 +8,17 @@ import typer
 from rich.console import Console
 
 from ...core.task_manager import TaskManager
+from ...storage import AmbiguousTaskIdError
 
 console = Console()
+
+
+def _handle_ambiguous_id(e: AmbiguousTaskIdError) -> None:
+    """Display ambiguous task ID error."""
+    console.print(f"[red]Error:[/red] Ambiguous task ID '{e.task_id}'")
+    console.print("Matching tasks:")
+    for t in e.matches:
+        console.print(f"  {t.short_id} - {t.title}")
 
 
 def start_task(
@@ -27,6 +36,9 @@ def start_task(
     try:
         task = manager.start(task_id)
         console.print(f"[blue]◐[/blue] Started: [bold]{task.title}[/bold]")
+    except AmbiguousTaskIdError as e:
+        _handle_ambiguous_id(e)
+        raise typer.Exit(1)
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
@@ -56,6 +68,9 @@ def done_task(
         if task.recurrence_parent_id:
             console.print("[dim]  Next instance will be generated automatically[/dim]")
 
+    except AmbiguousTaskIdError as e:
+        _handle_ambiguous_id(e)
+        raise typer.Exit(1)
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
@@ -76,6 +91,9 @@ def cancel_task(
     try:
         task = manager.cancel(task_id)
         console.print(f"[dim]✗[/dim] Cancelled: [bold]{task.title}[/bold]")
+    except AmbiguousTaskIdError as e:
+        _handle_ambiguous_id(e)
+        raise typer.Exit(1)
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
@@ -94,7 +112,12 @@ def delete_task(
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
     manager = TaskManager(storage_dir, format=format)
 
-    task = manager.get(task_id)
+    try:
+        task = manager.get(task_id)
+    except AmbiguousTaskIdError as e:
+        _handle_ambiguous_id(e)
+        raise typer.Exit(1)
+
     if not task:
         console.print(f"[red]Error:[/red] Task not found: {task_id}")
         raise typer.Exit(1)
@@ -106,7 +129,7 @@ def delete_task(
             raise typer.Exit(0)
 
     try:
-        manager.delete(task_id)
+        manager.delete(task.id)  # Use full ID to avoid re-lookup
         console.print(f"[red]Deleted:[/red] {task.title}")
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
@@ -129,6 +152,9 @@ def add_note(
     try:
         task = manager.add_note(task_id, content)
         console.print(f"[green]✓[/green] Note added to: [bold]{task.title}[/bold]")
+    except AmbiguousTaskIdError as e:
+        _handle_ambiguous_id(e)
+        raise typer.Exit(1)
     except ValueError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)

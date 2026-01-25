@@ -12,6 +12,7 @@ from rich.console import Console
 from ...core.task_manager import TaskManager
 from ...models.enums import Priority, Status
 from ...models.task import Task
+from ...storage import AmbiguousTaskIdError
 from ...storage.obsidian import ObsidianTasksFormat, ParsedObsidianTask
 
 console = Console()
@@ -581,7 +582,7 @@ def resolve_conflicts(
 @obsidian_app.command(name="format")
 def format_task(
     ctx: typer.Context,
-    task_id: str = typer.Argument(..., help="Task ID to format"),
+    task_id: str = typer.Argument(..., help="Task ID (full or short)"),
 ) -> None:
     """Display a task in Obsidian Tasks format.
 
@@ -595,7 +596,15 @@ def format_task(
     manager = TaskManager(storage_dir, format=storage_format)
     formatter = ObsidianTasksFormat()
 
-    task = manager.get(task_id)
+    try:
+        task = manager.get(task_id)
+    except AmbiguousTaskIdError as e:
+        console.print(f"[red]Error:[/red] Ambiguous task ID '{e.task_id}'")
+        console.print("Matching tasks:")
+        for t in e.matches:
+            console.print(f"  {t.short_id} - {t.title}")
+        raise typer.Exit(1)
+
     if not task:
         console.print(f"[red]Error:[/red] Task not found: {task_id}")
         raise typer.Exit(1)

@@ -8,6 +8,7 @@ from rich.panel import Panel
 
 from ...core.task_manager import TaskManager
 from ...models.enums import Priority, Status
+from ...storage import AmbiguousTaskIdError
 
 console = Console()
 
@@ -24,7 +25,15 @@ def show_task(
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
     manager = TaskManager(storage_dir, format=format)
 
-    task = manager.get(task_id)
+    try:
+        task = manager.get(task_id)
+    except AmbiguousTaskIdError as e:
+        console.print(f"[red]Error:[/red] Ambiguous task ID '{task_id}'")
+        console.print("Matching tasks:")
+        for t in e.matches:
+            console.print(f"  {t.short_id} - {t.title}")
+        raise typer.Exit(1)
+
     if not task:
         console.print(f"[red]Error:[/red] Task not found: {task_id}")
         raise typer.Exit(1)

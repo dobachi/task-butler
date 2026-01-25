@@ -10,6 +10,20 @@ from ..models.task import Task
 from .markdown import MarkdownStorage
 
 
+class AmbiguousTaskIdError(Exception):
+    """Raised when a short ID matches multiple tasks."""
+
+    def __init__(self, task_id: str, matches: list[Task]):
+        self.task_id = task_id
+        self.matches = matches
+        match_info = ", ".join(f"{t.short_id} ({t.title})" for t in matches[:5])
+        if len(matches) > 5:
+            match_info += f", ... (+{len(matches) - 5} more)"
+        super().__init__(
+            f"Ambiguous task ID '{task_id}' matches {len(matches)} tasks: {match_info}"
+        )
+
+
 class TaskRepository:
     """Repository for managing tasks with CRUD operations."""
 
@@ -31,19 +45,48 @@ class TaskRepository:
         self.storage.save(task)
         return task
 
+    def find_by_prefix(self, task_id: str) -> list[Task]:
+        """Find all tasks matching an ID prefix.
+
+        Args:
+            task_id: Full or partial task ID
+
+        Returns:
+            List of matching tasks
+        """
+        matches = []
+        for t in self.storage.list_all():
+            if t.id.startswith(task_id) or t.id == task_id:
+                matches.append(t)
+        return matches
+
     def get(self, task_id: str) -> Task | None:
-        """Get a task by ID (full or short ID)."""
-        # Try full ID first
+        """Get a task by ID (full or short ID).
+
+        Args:
+            task_id: Full UUID or short ID prefix (minimum 4 characters recommended)
+
+        Returns:
+            The matching task, or None if not found
+
+        Raises:
+            AmbiguousTaskIdError: If multiple tasks match the given ID prefix
+        """
+        # Try exact match first (full UUID)
         task = self.storage.load(task_id)
         if task:
             return task
 
-        # Try to find by short ID
-        for t in self.storage.list_all():
-            if t.id.startswith(task_id):
-                return t
+        # Try to find by prefix
+        matches = self.find_by_prefix(task_id)
 
-        return None
+        if len(matches) == 0:
+            return None
+        if len(matches) == 1:
+            return matches[0]
+
+        # Multiple matches - raise ambiguity error
+        raise AmbiguousTaskIdError(task_id, matches)
 
     def update(self, task: Task) -> Task:
         """Update an existing task."""

@@ -671,3 +671,154 @@ class TestTaskRepositoryWithFormat:
 
         assert "- [ ] Frontmatter task" not in content
         assert "due_date:" in content
+
+
+class TestShortIdSupport:
+    """Tests for short ID support in TaskRepository."""
+
+    @pytest.fixture
+    def repo(self, tmp_path):
+        """Create a repository."""
+        return TaskRepository(tmp_path)
+
+    def test_get_by_full_id(self, repo):
+        """Test getting task by full UUID."""
+        task = Task(title="Test task")
+        repo.create(task)
+
+        loaded = repo.get(task.id)
+        assert loaded is not None
+        assert loaded.id == task.id
+
+    def test_get_by_short_id(self, repo):
+        """Test getting task by short ID (8 chars)."""
+        task = Task(title="Test task")
+        repo.create(task)
+
+        loaded = repo.get(task.short_id)
+        assert loaded is not None
+        assert loaded.id == task.id
+
+    def test_get_by_partial_id(self, repo):
+        """Test getting task by partial ID (less than 8 chars)."""
+        task = Task(title="Test task")
+        repo.create(task)
+
+        # Try with 4 characters
+        partial_id = task.id[:4]
+        loaded = repo.get(partial_id)
+        assert loaded is not None
+        assert loaded.id == task.id
+
+    def test_get_nonexistent_task(self, repo):
+        """Test getting a task that doesn't exist."""
+        loaded = repo.get("nonexistent")
+        assert loaded is None
+
+    def test_find_by_prefix(self, repo):
+        """Test find_by_prefix method."""
+        task1 = Task(title="Task 1")
+        task2 = Task(title="Task 2")
+        repo.create(task1)
+        repo.create(task2)
+
+        # Find by specific prefix
+        matches = repo.find_by_prefix(task1.id[:4])
+        assert len(matches) >= 1
+        assert any(t.id == task1.id for t in matches)
+
+    def test_ambiguous_id_error(self, repo, tmp_path):
+        """Test that ambiguous ID raises error."""
+        from task_butler.storage.repository import AmbiguousTaskIdError
+
+        # Create tasks with similar IDs by manipulating the storage directly
+        # This is a bit artificial but tests the error handling
+        task1 = Task(title="Task 1")
+        task2 = Task(title="Task 2")
+        repo.create(task1)
+        repo.create(task2)
+
+        # If both tasks happen to share a prefix, test the error
+        # More reliable: manually create files with known IDs
+        from task_butler.storage.markdown import MarkdownStorage
+
+        storage = MarkdownStorage(tmp_path)
+
+        # Create two tasks with IDs that share a 4-char prefix
+        task_a = Task(title="Task A")
+        task_a.id = "aaaa1111-2222-3333-4444-555555555555"
+        storage.save(task_a)
+
+        task_b = Task(title="Task B")
+        task_b.id = "aaaa2222-3333-4444-5555-666666666666"
+        storage.save(task_b)
+
+        # Create a new repo pointing to same dir
+        test_repo = TaskRepository(tmp_path)
+
+        # Looking up "aaaa" should be ambiguous
+        with pytest.raises(AmbiguousTaskIdError) as exc_info:
+            test_repo.get("aaaa")
+
+        assert exc_info.value.task_id == "aaaa"
+        assert len(exc_info.value.matches) == 2
+
+    def test_ambiguous_id_error_message(self, tmp_path):
+        """Test ambiguous ID error message format."""
+        from task_butler.storage.markdown import MarkdownStorage
+        from task_butler.storage.repository import AmbiguousTaskIdError
+
+        storage = MarkdownStorage(tmp_path)
+
+        task_a = Task(title="First Task")
+        task_a.id = "bbbb1111-2222-3333-4444-555555555555"
+        storage.save(task_a)
+
+        task_b = Task(title="Second Task")
+        task_b.id = "bbbb2222-3333-4444-5555-666666666666"
+        storage.save(task_b)
+
+        test_repo = TaskRepository(tmp_path)
+
+        with pytest.raises(AmbiguousTaskIdError) as exc_info:
+            test_repo.get("bbbb")
+
+        error_msg = str(exc_info.value)
+        assert "bbbb" in error_msg
+        assert "2 tasks" in error_msg
+        assert "First Task" in error_msg or "Second Task" in error_msg
+
+    def test_delete_by_short_id(self, repo):
+        """Test deleting task by short ID."""
+        task = Task(title="Task to delete")
+        repo.create(task)
+
+        result = repo.delete(task.short_id)
+        assert result is True
+        assert repo.get(task.id) is None
+
+    def test_unique_prefix_resolves(self, tmp_path):
+        """Test that unique prefix resolves to single task."""
+        from task_butler.storage.markdown import MarkdownStorage
+
+        storage = MarkdownStorage(tmp_path)
+
+        task_a = Task(title="Unique A")
+        task_a.id = "cccc1111-2222-3333-4444-555555555555"
+        storage.save(task_a)
+
+        task_b = Task(title="Unique B")
+        task_b.id = "dddd2222-3333-4444-5555-666666666666"
+        storage.save(task_b)
+
+        test_repo = TaskRepository(tmp_path)
+
+        # "cccc" uniquely identifies task_a
+        loaded = test_repo.get("cccc")
+        assert loaded is not None
+        assert loaded.id == task_a.id
+
+        # "dddd" uniquely identifies task_b
+        loaded = test_repo.get("dddd")
+        assert loaded is not None
+        assert loaded.id == task_b.id
