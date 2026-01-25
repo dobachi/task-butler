@@ -512,6 +512,125 @@ class TestMarkdownStorageHybridMode:
         assert "- [ ]" not in loaded.description
         assert "This is the real description" in loaded.description
 
+    def test_hybrid_multiple_saves_with_status_change(self, storage_hybrid):
+        """Test multiple saves with status change (checkbox updates correctly)."""
+        task = Task(
+            title="Status change task",
+            due_date=datetime(2025, 2, 1),
+        )
+
+        # First save (pending)
+        storage_hybrid.save(task)
+
+        # Load, change status, save
+        loaded = storage_hybrid.load(task.id)
+        loaded.complete()
+        path = storage_hybrid.save(loaded)
+
+        content = path.read_text()
+
+        # Should have [x] not [ ]
+        assert "- [x] Status change task" in content
+        assert "- [ ] Status change task" not in content
+        # Still only one Obsidian line
+        assert content.count("- [x]") == 1
+
+    def test_hybrid_three_consecutive_saves(self, storage_hybrid):
+        """Test three consecutive save-load cycles don't accumulate lines."""
+        task = Task(
+            title="Multi save task",
+            due_date=datetime(2025, 2, 1),
+        )
+
+        # Save 1
+        storage_hybrid.save(task)
+
+        # Load and save 2
+        loaded = storage_hybrid.load(task.id)
+        loaded.add_note("Note 1")
+        storage_hybrid.save(loaded)
+
+        # Load and save 3
+        loaded = storage_hybrid.load(task.id)
+        loaded.add_note("Note 2")
+        path = storage_hybrid.save(loaded)
+
+        content = path.read_text()
+
+        # Should have exactly one Obsidian line
+        obsidian_count = content.count("- [ ] Multi save task")
+        assert obsidian_count == 1, f"Expected 1, found {obsidian_count}"
+
+        # Notes should still be preserved
+        assert "Note 1" in content
+        assert "Note 2" in content
+
+    def test_hybrid_empty_description(self, storage_hybrid):
+        """Test hybrid mode with empty description."""
+        task = Task(
+            title="No description task",
+            due_date=datetime(2025, 2, 1),
+        )
+
+        storage_hybrid.save(task)
+        loaded = storage_hybrid.load(task.id)
+
+        # Description should be empty after stripping Obsidian line
+        assert loaded.description == ""
+
+        # Save again
+        path = storage_hybrid.save(loaded)
+        content = path.read_text()
+
+        # Should still have exactly one Obsidian line
+        assert content.count("- [ ] No description task") == 1
+
+    def test_hybrid_completed_task_multiple_saves(self, storage_hybrid):
+        """Test completed task (- [x]) doesn't duplicate on multiple saves."""
+        task = Task(
+            title="Completed task",
+            status=Status.DONE,
+            due_date=datetime(2025, 2, 1),
+        )
+
+        # First save
+        storage_hybrid.save(task)
+
+        # Load and save again
+        loaded = storage_hybrid.load(task.id)
+        loaded.add_note("Done note")
+        path = storage_hybrid.save(loaded)
+
+        content = path.read_text()
+
+        # Should have exactly one [x] line
+        assert content.count("- [x] Completed task") == 1
+        assert "- [ ]" not in content
+
+    def test_strip_obsidian_lines_helper(self, storage_hybrid):
+        """Test _strip_obsidian_lines helper method directly."""
+        # Test with unchecked task
+        content1 = "- [ ] Task title\n\nDescription here"
+        result1 = storage_hybrid._strip_obsidian_lines(content1)
+        assert "- [ ]" not in result1
+        assert "Description here" in result1
+
+        # Test with checked task
+        content2 = "- [x] Done task\n\nMore content"
+        result2 = storage_hybrid._strip_obsidian_lines(content2)
+        assert "- [x]" not in result2
+        assert "More content" in result2
+
+        # Test with uppercase X
+        content3 = "- [X] Also done\n\nContent"
+        result3 = storage_hybrid._strip_obsidian_lines(content3)
+        assert "- [X]" not in result3
+
+        # Test with no Obsidian line
+        content4 = "Just a description"
+        result4 = storage_hybrid._strip_obsidian_lines(content4)
+        assert result4 == "Just a description"
+
 
 class TestTaskRepositoryWithFormat:
     """Tests for TaskRepository with format parameter."""
