@@ -1,5 +1,7 @@
 # Task Butler
 
+[日本語](README.ja.md) | English
+
 Your digital butler for task management. A CLI tool that helps you manage tasks, prioritize work, and stay organized.
 
 ## Features
