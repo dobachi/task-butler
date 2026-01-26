@@ -1,7 +1,6 @@
 """Tests for Obsidian Tasks format support."""
 
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
