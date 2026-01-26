@@ -526,9 +526,7 @@ def import_tasks(
         try:
             storage_dir.resolve().relative_to(vault_root.resolve())
         except ValueError:
-            console.print(
-                "[yellow]Warning:[/yellow] Task storage is outside the vault"
-            )
+            console.print("[yellow]Warning:[/yellow] Task storage is outside the vault")
             console.print(f"  Vault root: {vault_root}")
             console.print(f"  Storage: {storage_dir}")
             console.print("[dim]Links may not work correctly in Obsidian[/dim]")

@@ -751,9 +751,7 @@ Some other content
 
         task = Task(id="11111111-aaaa-1111-aaaa-111111111111", title="Indented task")
         task_infos = [
-            ImportedTaskInfo(
-                task=task, line_number=2, original_line="    - [ ] Indented task"
-            ),
+            ImportedTaskInfo(task=task, line_number=2, original_line="    - [ ] Indented task"),
         ]
 
         _replace_lines_with_links(file, task_infos, storage, vault, LinkFormat.WIKI)
