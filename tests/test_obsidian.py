@@ -1,6 +1,7 @@
 """Tests for Obsidian Tasks format support."""
 
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
@@ -398,6 +399,106 @@ class TestDirectoryImport:
         assert len(files) == 2
 
 
+class TestVaultRootDetection:
+    """Tests for Obsidian vault root detection."""
+
+    def test_find_vault_root_with_obsidian_dir(self, tmp_path):
+        """Test finding vault root when .obsidian directory exists."""
+        from task_butler.cli.commands.obsidian import find_vault_root
+
+        vault = tmp_path / "my_vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        daily = vault / "daily"
+        daily.mkdir()
+
+        # Should find vault root from subdirectory
+        result = find_vault_root(daily)
+        assert result == vault
+
+    def test_find_vault_root_from_file(self, tmp_path):
+        """Test finding vault root from a file path."""
+        from task_butler.cli.commands.obsidian import find_vault_root
+
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        file = vault / "note.md"
+        file.write_text("content")
+
+        result = find_vault_root(file)
+        assert result == vault
+
+    def test_find_vault_root_not_found(self, tmp_path):
+        """Test when no vault root exists."""
+        from task_butler.cli.commands.obsidian import find_vault_root
+
+        no_vault = tmp_path / "no_vault"
+        no_vault.mkdir()
+
+        result = find_vault_root(no_vault)
+        assert result is None
+
+
+class TestWikiLinkGeneration:
+    """Tests for wiki link generation."""
+
+    def test_generate_wiki_link_basic(self, tmp_path):
+        """Test generating a basic wiki link."""
+        from task_butler.cli.commands.obsidian import (
+            LinkFormat,
+            generate_wiki_link,
+        )
+
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        storage = vault / "Tasks"
+        storage.mkdir()
+
+        task = Task(id="12345678-abcd-1234-abcd-1234567890ab", title="My Task")
+        link = generate_wiki_link(task, storage, vault, LinkFormat.WIKI)
+
+        assert link == "[[Tasks/12345678_My_Task|My Task]]"
+
+    def test_generate_wiki_link_embed(self, tmp_path):
+        """Test generating an embed link."""
+        from task_butler.cli.commands.obsidian import (
+            LinkFormat,
+            generate_wiki_link,
+        )
+
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        storage = vault / "Tasks"
+        storage.mkdir()
+
+        task = Task(id="12345678-abcd-1234-abcd-1234567890ab", title="My Task")
+        link = generate_wiki_link(task, storage, vault, LinkFormat.EMBED)
+
+        assert link == "![[Tasks/12345678_My_Task|My Task]]"
+
+    def test_generate_wiki_link_outside_vault(self, tmp_path):
+        """Test generating link when storage is outside vault."""
+        from task_butler.cli.commands.obsidian import (
+            LinkFormat,
+            generate_wiki_link,
+        )
+
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        storage = tmp_path / "external_storage"
+        storage.mkdir()
+
+        task = Task(id="12345678-abcd-1234-abcd-1234567890ab", title="My Task")
+        link = generate_wiki_link(task, storage, vault, LinkFormat.WIKI)
+
+        # Should use absolute path (won't work in Obsidian but shouldn't crash)
+        assert "My Task" in link
+
+
 class TestImportDuplicateHandling:
     """Tests for import duplicate handling."""
 
@@ -432,7 +533,7 @@ class TestImportDuplicateHandling:
         formatter = ObsidianTasksFormat()
         global_action = {}
 
-        imported, updated, skipped, errors = _import_single_file(
+        imported, updated, skipped, errors, task_infos = _import_single_file(
             obsidian_file,
             manager,
             formatter,
@@ -444,6 +545,7 @@ class TestImportDuplicateHandling:
         assert len(imported) == 1  # Only "New task" imported
         assert len(skipped) == 1  # "Duplicate task" skipped
         assert skipped[0][0].title == "Duplicate task"
+        assert len(task_infos) == 1  # Only imported task has info
 
     def test_import_update_duplicates(self, manager, obsidian_file, tmp_path):
         """Test that duplicates are updated with --update."""
@@ -468,7 +570,7 @@ class TestImportDuplicateHandling:
         formatter = ObsidianTasksFormat()
         global_action = {}
 
-        imported, updated, skipped, errors = _import_single_file(
+        imported, updated, skipped, errors, task_infos = _import_single_file(
             file,
             manager,
             formatter,
@@ -479,6 +581,7 @@ class TestImportDuplicateHandling:
 
         assert len(imported) == 0
         assert len(updated) == 1
+        assert len(task_infos) == 1  # Updated task has info
 
         # Check that priority was updated
         refreshed = manager.get(existing.id)
@@ -498,7 +601,7 @@ class TestImportDuplicateHandling:
         formatter = ObsidianTasksFormat()
         global_action = {}
 
-        imported, updated, skipped, errors = _import_single_file(
+        imported, updated, skipped, errors, task_infos = _import_single_file(
             obsidian_file,
             manager,
             formatter,
@@ -509,6 +612,7 @@ class TestImportDuplicateHandling:
 
         assert len(imported) == 2  # Both tasks created
         assert len(skipped) == 0
+        assert len(task_infos) == 2  # Both have info
 
         # Should have 3 total tasks now (1 existing + 2 new)
         all_tasks = manager.list(include_done=True)
@@ -525,7 +629,7 @@ class TestImportDuplicateHandling:
         formatter = ObsidianTasksFormat()
         global_action = {}
 
-        imported, updated, skipped, errors = _import_single_file(
+        imported, updated, skipped, errors, task_infos = _import_single_file(
             obsidian_file,
             manager,
             formatter,
@@ -540,3 +644,159 @@ class TestImportDuplicateHandling:
         # No tasks should exist in storage
         all_tasks = manager.list(include_done=True)
         assert len(all_tasks) == 0
+
+
+class TestLinkReplacement:
+    """Tests for link replacement functionality."""
+
+    @pytest.fixture
+    def vault(self, tmp_path):
+        """Create a mock Obsidian vault."""
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        return vault
+
+    @pytest.fixture
+    def manager(self, vault):
+        """Create a task manager with storage inside vault."""
+        from task_butler.core.task_manager import TaskManager
+
+        storage = vault / "Tasks"
+        return TaskManager(storage)
+
+    def test_import_with_source_tracking(self, vault, manager):
+        """Test that source file and line are tracked during import."""
+        from task_butler.cli.commands.obsidian import (
+            DuplicateAction,
+            _import_single_file,
+        )
+        from task_butler.storage.obsidian import ObsidianTasksFormat
+
+        # Create test file
+        daily = vault / "daily"
+        daily.mkdir()
+        file = daily / "2025-01-25.md"
+        file.write_text("- [ ] Task from daily note 📅 2025-02-01")
+
+        formatter = ObsidianTasksFormat()
+        global_action = {}
+
+        imported, updated, skipped, errors, task_infos = _import_single_file(
+            file,
+            manager,
+            formatter,
+            DuplicateAction.SKIP,
+            dry_run=False,
+            global_action=global_action,
+            vault_root=vault,
+            source_file_relative="daily/2025-01-25.md",
+        )
+
+        assert len(imported) == 1
+        task = imported[0]
+        assert task.source_file == "daily/2025-01-25.md"
+        assert task.source_line == 1
+
+    def test_replace_lines_with_links(self, vault, manager):
+        """Test replacing task lines with wiki links."""
+        from task_butler.cli.commands.obsidian import (
+            ImportedTaskInfo,
+            LinkFormat,
+            _replace_lines_with_links,
+        )
+
+        storage = vault / "Tasks"
+        storage.mkdir(exist_ok=True)
+
+        # Create test file
+        file = vault / "test.md"
+        file.write_text("""# Tasks
+- [ ] First task
+- [ ] Second task
+Some other content
+""")
+
+        task1 = Task(id="11111111-aaaa-1111-aaaa-111111111111", title="First task")
+        task2 = Task(id="22222222-bbbb-2222-bbbb-222222222222", title="Second task")
+
+        task_infos = [
+            ImportedTaskInfo(task=task1, line_number=2, original_line="- [ ] First task"),
+            ImportedTaskInfo(task=task2, line_number=3, original_line="- [ ] Second task"),
+        ]
+
+        _replace_lines_with_links(file, task_infos, storage, vault, LinkFormat.WIKI)
+
+        content = file.read_text()
+        assert "[[Tasks/11111111_First_task|First task]]" in content
+        assert "[[Tasks/22222222_Second_task|Second task]]" in content
+        assert "# Tasks" in content
+        assert "Some other content" in content
+
+    def test_replace_lines_preserves_indentation(self, vault, manager):
+        """Test that link replacement preserves leading whitespace."""
+        from task_butler.cli.commands.obsidian import (
+            ImportedTaskInfo,
+            LinkFormat,
+            _replace_lines_with_links,
+        )
+
+        storage = vault / "Tasks"
+        storage.mkdir(exist_ok=True)
+
+        # Create test file with indented task
+        file = vault / "test.md"
+        file.write_text("""# Tasks
+    - [ ] Indented task
+""")
+
+        task = Task(id="11111111-aaaa-1111-aaaa-111111111111", title="Indented task")
+        task_infos = [
+            ImportedTaskInfo(
+                task=task, line_number=2, original_line="    - [ ] Indented task"
+            ),
+        ]
+
+        _replace_lines_with_links(file, task_infos, storage, vault, LinkFormat.WIKI)
+
+        content = file.read_text()
+        lines = content.split("\n")
+        # Should preserve 4-space indentation
+        assert lines[1].startswith("    - [[")
+
+    def test_replace_lines_with_embed_format(self, vault, manager):
+        """Test replacing with embed format (![[...]])."""
+        from task_butler.cli.commands.obsidian import (
+            ImportedTaskInfo,
+            LinkFormat,
+            _replace_lines_with_links,
+        )
+
+        storage = vault / "Tasks"
+        storage.mkdir(exist_ok=True)
+
+        file = vault / "test.md"
+        file.write_text("- [ ] Task to embed")
+
+        task = Task(id="11111111-aaaa-1111-aaaa-111111111111", title="Task to embed")
+        task_infos = [
+            ImportedTaskInfo(task=task, line_number=1, original_line="- [ ] Task to embed"),
+        ]
+
+        _replace_lines_with_links(file, task_infos, storage, vault, LinkFormat.EMBED)
+
+        content = file.read_text()
+        assert "![[Tasks/11111111_Task_to_embed|Task to embed]]" in content
+
+    def test_source_file_loaded_from_storage(self, vault, manager):
+        """Test that source_file is correctly loaded from storage."""
+        # Create a task with source tracking
+        task = manager.add(title="Test task")
+        task.source_file = "daily/2025-01-25.md"
+        task.source_line = 5
+        manager.repository.update(task)
+
+        # Reload task and verify source tracking is preserved
+        loaded = manager.get(task.id)
+        assert loaded.source_file == "daily/2025-01-25.md"
+        assert loaded.source_line == 5

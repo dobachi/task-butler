@@ -165,6 +165,10 @@ class MarkdownStorage:
                 metadata["recurrence"]["end_date"] = task.recurrence.end_date.isoformat()
         if task.recurrence_parent_id:
             metadata["recurrence_parent_id"] = task.recurrence_parent_id
+        if task.source_file:
+            metadata["source_file"] = task.source_file
+        if task.source_line:
+            metadata["source_line"] = task.source_line
 
         # Build content
         content_parts = []
@@ -283,6 +287,8 @@ class MarkdownStorage:
             created_at=datetime.fromisoformat(metadata["created_at"]),
             updated_at=datetime.fromisoformat(metadata["updated_at"]),
             notes=notes,
+            source_file=metadata.get("source_file"),
+            source_line=metadata.get("source_line"),
         )
 
         return task

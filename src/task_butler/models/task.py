@@ -61,6 +61,10 @@ class Task(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.now)
     notes: list[Note] = Field(default_factory=list)
 
+    # Source tracking (for imports)
+    source_file: str | None = None  # Original file path (relative to Vault)
+    source_line: int | None = None  # Original line number in source file
+
     def add_note(self, content: str) -> None:
         """Add a note to the task."""
         self.notes.append(Note(content=content))

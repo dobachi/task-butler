@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -16,6 +17,82 @@ from ...storage import AmbiguousTaskIdError
 from ...storage.obsidian import ObsidianTasksFormat, ParsedObsidianTask
 
 console = Console()
+
+
+class LinkFormat(str, Enum):
+    """Link format for source replacement."""
+
+    WIKI = "wiki"  # [[path|title]] format
+    EMBED = "embed"  # ![[path|title]] format
+
+
+@dataclass
+class ImportedTaskInfo:
+    """Information about an imported task for link replacement."""
+
+    task: Task
+    line_number: int
+    original_line: str
+
+
+def find_vault_root(path: Path) -> Path | None:
+    """Find Obsidian vault root by looking for .obsidian directory.
+
+    Args:
+        path: Starting path to search from.
+
+    Returns:
+        Path to vault root, or None if not found.
+    """
+    current = path.resolve()
+    if current.is_file():
+        current = current.parent
+
+    while current != current.parent:
+        if (current / ".obsidian").is_dir():
+            return current
+        current = current.parent
+    return None
+
+
+def generate_wiki_link(
+    task: Task,
+    storage_dir: Path,
+    vault_root: Path,
+    link_format: LinkFormat = LinkFormat.WIKI,
+) -> str:
+    """Generate an Obsidian wiki link for a task.
+
+    Args:
+        task: The task to generate a link for.
+        storage_dir: Path to the task storage directory.
+        vault_root: Path to the Obsidian vault root.
+        link_format: Wiki link format (wiki or embed).
+
+    Returns:
+        Obsidian wiki link string.
+    """
+    from ...storage.markdown import MarkdownStorage
+
+    # Generate the task filename
+    storage = MarkdownStorage(storage_dir)
+    filename = storage._task_filename(task.id, task.title)
+
+    # Calculate relative path from vault root
+    task_file_path = storage_dir / filename
+    try:
+        relative_path = task_file_path.relative_to(vault_root)
+        # Remove .md extension for Obsidian links
+        link_path = str(relative_path).replace("\\", "/")
+        if link_path.endswith(".md"):
+            link_path = link_path[:-3]
+    except ValueError:
+        # Storage is outside vault - use absolute path (won't work in Obsidian)
+        link_path = str(task_file_path)
+
+    # Generate link
+    prefix = "!" if link_format == LinkFormat.EMBED else ""
+    return f"{prefix}[[{link_path}|{task.title}]]"
 
 
 class DuplicateAction(str, Enum):
@@ -142,7 +219,9 @@ def _import_single_file(
     duplicate_action: DuplicateAction,
     dry_run: bool,
     global_action: dict,
-) -> tuple[list, list, list, list]:
+    vault_root: Path | None = None,
+    source_file_relative: str | None = None,
+) -> tuple[list, list, list, list, list[ImportedTaskInfo]]:
     """Import tasks from a single file.
 
     Args:
@@ -152,9 +231,11 @@ def _import_single_file(
         duplicate_action: How to handle duplicates
         dry_run: Preview only
         global_action: Mutable dict for storing user's "all" choice
+        vault_root: Obsidian vault root path (for source tracking)
+        source_file_relative: Relative path from vault root (for source tracking)
 
     Returns:
-        Tuple of (imported, updated, skipped, errors) lists
+        Tuple of (imported, updated, skipped, errors, imported_task_info) lists
     """
     content = file.read_text(encoding="utf-8")
     lines = content.split("\n")
@@ -163,8 +244,10 @@ def _import_single_file(
     updated = []
     skipped = []
     errors = []
+    imported_task_info: list[ImportedTaskInfo] = []
 
     for i, line in enumerate(lines, 1):
+        original_line = line
         line = line.strip()
         if not line.startswith("- ["):
             continue
@@ -209,6 +292,14 @@ def _import_single_file(
                             f"  [dim]Line {i}:[/dim] [blue]UPDATE[/blue] {parsed.title} "
                             f"(existing: {existing.short_id})"
                         )
+                        # Track for link replacement even in dry-run
+                        imported_task_info.append(
+                            ImportedTaskInfo(
+                                task=existing,
+                                line_number=i,
+                                original_line=original_line,
+                            )
+                        )
                     else:
                         # Update existing task
                         manager.update(
@@ -229,6 +320,14 @@ def _import_single_file(
                                     task.completed_at = parsed.completed_at
                                     manager.repository.update(task)
 
+                        # Track for link replacement
+                        imported_task_info.append(
+                            ImportedTaskInfo(
+                                task=existing,
+                                line_number=i,
+                                original_line=original_line,
+                            )
+                        )
                         updated.append(existing)
                     continue
 
@@ -252,6 +351,12 @@ def _import_single_file(
                     tags=parsed.tags,
                 )
 
+                # Set source tracking if vault_root is provided
+                if source_file_relative:
+                    task.source_file = source_file_relative
+                    task.source_line = i
+                    manager.repository.update(task)
+
                 # Update status if completed
                 if parsed.is_completed:
                     manager.complete(task.id)
@@ -261,12 +366,57 @@ def _import_single_file(
                             task.completed_at = parsed.completed_at
                             manager.repository.update(task)
 
+                # Track for link replacement
+                imported_task_info.append(
+                    ImportedTaskInfo(
+                        task=task,
+                        line_number=i,
+                        original_line=original_line,
+                    )
+                )
                 imported.append(task)
 
         except ValueError as e:
             errors.append((i, line, str(e)))
 
-    return imported, updated, skipped, errors
+    return imported, updated, skipped, errors, imported_task_info
+
+
+def _replace_lines_with_links(
+    file: Path,
+    task_infos: list[ImportedTaskInfo],
+    storage_dir: Path,
+    vault_root: Path,
+    link_format: LinkFormat,
+) -> None:
+    """Replace task lines in a file with wiki links.
+
+    Args:
+        file: File to modify
+        task_infos: List of imported task info with line numbers
+        storage_dir: Path to task storage directory
+        vault_root: Path to vault root
+        link_format: Link format (wiki or embed)
+    """
+    content = file.read_text(encoding="utf-8")
+    lines = content.split("\n")
+
+    # Sort by line number descending to replace from bottom up
+    # (so line numbers don't shift as we replace)
+    sorted_infos = sorted(task_infos, key=lambda x: x.line_number, reverse=True)
+
+    for info in sorted_infos:
+        line_idx = info.line_number - 1  # Convert to 0-indexed
+        if 0 <= line_idx < len(lines):
+            # Generate wiki link
+            link = generate_wiki_link(info.task, storage_dir, vault_root, link_format)
+            # Preserve leading whitespace from original line
+            original = info.original_line
+            leading_whitespace = original[: len(original) - len(original.lstrip())]
+            lines[line_idx] = f"{leading_whitespace}- {link}"
+
+    # Write back
+    file.write_text("\n".join(lines), encoding="utf-8")
 
 
 @obsidian_app.command(name="import")
@@ -285,6 +435,14 @@ def import_tasks(
     ),
     dry_run: bool = typer.Option(
         False, "--dry-run", "-n", help="Show what would be imported without making changes"
+    ),
+    link: bool = typer.Option(
+        False, "--link", "-l", help="Replace source lines with wiki links to created tasks"
+    ),
+    link_format_opt: str = typer.Option(
+        "wiki",
+        "--link-format",
+        help="Link format: 'wiki' ([[path|title]]) or 'embed' (![[path|title]])",
     ),
 ) -> None:
     """Import tasks from Obsidian markdown file(s).
@@ -309,9 +467,23 @@ def import_tasks(
 
         # Interactive mode
         task-butler obsidian import ~/Vault/daily/ --interactive
+
+        # Replace source lines with links
+        task-butler obsidian import ~/Vault/daily/ --link
+
+        # Use embed format for links
+        task-butler obsidian import ~/Vault/daily/ --link --link-format embed
     """
     if not path.exists():
         console.print(f"[red]Error:[/red] Path not found: {path}")
+        raise typer.Exit(1)
+
+    # Parse link format
+    try:
+        link_format = LinkFormat(link_format_opt.lower())
+    except ValueError:
+        console.print(f"[red]Error:[/red] Invalid link format: {link_format_opt}")
+        console.print("Use 'wiki' or 'embed'")
         raise typer.Exit(1)
 
     # Determine duplicate action (mutually exclusive options)
@@ -339,6 +511,32 @@ def import_tasks(
     manager = TaskManager(storage_dir, format=storage_format)
     formatter = ObsidianTasksFormat()
 
+    # Find vault root if link mode is enabled
+    vault_root: Path | None = None
+    if link:
+        vault_root = find_vault_root(path)
+        if vault_root is None:
+            console.print(
+                "[red]Error:[/red] Could not find Obsidian vault root (.obsidian directory)"
+            )
+            console.print("[dim]Make sure the import path is inside an Obsidian vault[/dim]")
+            raise typer.Exit(1)
+
+        # Check if storage is inside the vault
+        try:
+            storage_dir.resolve().relative_to(vault_root.resolve())
+        except ValueError:
+            console.print(
+                f"[yellow]Warning:[/yellow] Task storage is outside the vault"
+            )
+            console.print(f"  Vault root: {vault_root}")
+            console.print(f"  Storage: {storage_dir}")
+            console.print("[dim]Links may not work correctly in Obsidian[/dim]")
+
+        if dry_run:
+            console.print(f"[dim]Vault root: {vault_root}[/dim]")
+            console.print(f"[dim]Storage: {storage_dir}[/dim]")
+
     # Collect files to process
     files = _collect_files(path, recursive, pattern)
 
@@ -355,20 +553,47 @@ def import_tasks(
     total_updated = []
     total_skipped = []
     total_errors = []
+    total_task_infos: dict[Path, list[ImportedTaskInfo]] = {}
     global_action: dict = {}  # For storing "all skip" or "all update" choice
 
     for file in files:
         if len(files) > 1:
             console.print(f"\n[cyan]{file.name}:[/cyan]")
 
-        imported, updated, skipped, errors = _import_single_file(
-            file, manager, formatter, duplicate_action, dry_run, global_action
+        # Calculate relative path from vault root for source tracking
+        source_file_relative: str | None = None
+        if vault_root:
+            try:
+                source_file_relative = str(file.resolve().relative_to(vault_root.resolve()))
+            except ValueError:
+                pass
+
+        imported, updated, skipped, errors, task_infos = _import_single_file(
+            file,
+            manager,
+            formatter,
+            duplicate_action,
+            dry_run,
+            global_action,
+            vault_root=vault_root,
+            source_file_relative=source_file_relative,
         )
 
         total_imported.extend(imported)
         total_updated.extend(updated)
         total_skipped.extend(skipped)
         total_errors.extend(errors)
+        if task_infos:
+            total_task_infos[file] = task_infos
+
+    # Replace source lines with links if requested
+    if link and total_task_infos and not dry_run:
+        for file, task_infos in total_task_infos.items():
+            _replace_lines_with_links(file, task_infos, storage_dir, vault_root, link_format)
+        console.print(
+            f"[green]✓[/green] Replaced {sum(len(t) for t in total_task_infos.values())} "
+            f"task line(s) with links"
+        )
 
     # Summary
     console.print()
@@ -379,6 +604,9 @@ def import_tasks(
             console.print(f"  Would update: {len(total_updated)} existing task(s)")
         if total_skipped:
             console.print(f"  Would skip: {len(total_skipped)} duplicate(s)")
+        if link and total_task_infos:
+            total_links = sum(len(t) for t in total_task_infos.values())
+            console.print(f"  Would replace: {total_links} line(s) with links")
         if total_errors:
             console.print(f"  [yellow]Parse errors: {len(total_errors)}[/yellow]")
     else:

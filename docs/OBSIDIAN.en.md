@@ -138,6 +138,12 @@ task-butler obsidian import ~/Documents/MyVault/daily/ --update
 
 # Interactive duplicate handling
 task-butler obsidian import ~/Documents/MyVault/daily/ --interactive
+
+# Replace source lines with wiki links
+task-butler obsidian import ~/Documents/MyVault/daily/ --link
+
+# Use embed format for links
+task-butler obsidian import ~/Documents/MyVault/daily/ --link --link-format embed
 ```
 
 ## Command Reference
@@ -188,6 +194,27 @@ task-butler obsidian import <path> [options]
 | `--force` | - | Create new task even if duplicate exists |
 | `--interactive` | `-i` | Prompt for each duplicate |
 | `--dry-run` | `-n` | Preview only, don't actually create |
+| `--link` | `-l` | Replace source lines with wiki links |
+| `--link-format` | - | Link format: `wiki` (default) or `embed` |
+
+**About Link Replacement Mode:**
+
+When using the `--link` option, the original task lines in your Obsidian notes are replaced with wiki links after import. This prevents duplicate display in the Obsidian Tasks plugin and enables centralized task management.
+
+Before import:
+```markdown
+- [ ] Meeting prep 📅 2025-02-01
+```
+
+After import (with `--link`):
+```markdown
+- [[Tasks/abc12345_Meeting_prep|Meeting prep]]
+```
+
+**Notes:**
+- Must be run inside an Obsidian Vault (where `.obsidian` directory exists)
+- If Task Butler storage (`--storage-dir`) is outside the vault, links may not work correctly
+- Use `--link-format embed` to generate embed links (`![[...]]`)
 
 **About Duplicate Detection:**
 
