@@ -25,6 +25,12 @@ uv tool install git+https://github.com/dobachi/task-butler.git
 
 `task-butler`と`tb`コマンドがグローバルにインストールされ、シェル補完も利用可能になります。
 
+### アップグレード
+
+```bash
+uv tool upgrade task-butler
+```
+
 ### uvxで試す
 
 ```bash

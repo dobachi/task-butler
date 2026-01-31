@@ -25,6 +25,12 @@ uv tool install git+https://github.com/dobachi/task-butler.git
 
 This installs `task-butler` and `tb` commands globally, with shell completion support.
 
+### Upgrade
+
+```bash
+uv tool upgrade task-butler
+```
+
 ### Quick Try with uvx
 
 ```bash
