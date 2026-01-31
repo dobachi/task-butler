@@ -20,16 +20,21 @@ _task_butler_complete_task_id() {
         return
     fi
 
-    # Show tasks with descriptions
-    if [[ -z "$cur" ]]; then
-        echo >&2
-        echo "$tasks" >&2
-        echo >&2
-    fi
-
     # Extract task IDs for completion (8-char hex IDs)
     local ids=$(echo "$tasks" | grep -oE '[a-f0-9]{8}')
     COMPREPLY=($(compgen -W "$ids" -- "$cur"))
+
+    # Show task list only once per command line (track via temp file)
+    local cache_key=$(echo "$COMP_LINE" | md5sum | cut -d' ' -f1)
+    local cache_file="/tmp/.tb_comp_$cache_key"
+
+    if [[ -z "$cur" && ${#COMPREPLY[@]} -gt 1 && ! -f "$cache_file" ]]; then
+        touch "$cache_file"
+        # Clean up old cache files
+        find /tmp -name '.tb_comp_*' -mmin +1 -delete 2>/dev/null
+        echo >&2
+        echo "$tasks" >&2
+    fi
 }
 
 _task_butler_completion() {
