@@ -70,6 +70,15 @@ task-butler done abc1
 
 Task Butlerはコマンド、オプション、タスクIDのシェル補完をサポートしています。
 
+### 前提条件
+
+シェル補完には永続的なインストールが必要です。**`uvx`（一時実行）では補完は機能しません。**
+
+```bash
+# ツールとしてインストール（補完に必要）
+uv tool install git+https://github.com/dobachi/task-butler.git
+```
+
 ### インストール
 
 ```bash
