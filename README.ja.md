@@ -99,23 +99,23 @@ Task Butlerはコマンド、オプション、タスクIDのシェル補完を�
 ### セットアップ
 
 ```bash
-# Zsh（推奨 - タスクタイトル表示）
+# Zsh（タスクタイトル表示）
 task-butler --install-completion zsh
 
-# Fish（推奨 - タスクタイトル表示）
+# Fish（タスクタイトル表示）
 task-butler --install-completion fish
 
-# Bash（基本 - IDのみ）
-task-butler --install-completion bash
-
-# Bash（拡張 - タスクタイトル表示）
-# カスタムスクリプトをダウンロードして読み込み:
+# Bash（タスクタイトル表示）
+mkdir -p ~/.bash_completions
 curl -o ~/.bash_completions/task-butler.sh \
   https://raw.githubusercontent.com/dobachi/task-butler/main/scripts/task-butler-completion.bash
+echo 'source ~/.bash_completions/task-butler.sh' >> ~/.bashrc
 source ~/.bash_completions/task-butler.sh
 ```
 
 インストール後、シェルを再起動するか設定ファイルを再読み込みしてください。
+
+> **注意**: Bashでは `--install-completion bash` を使用しないでください。タスクタイトルが表示されない基本版がインストールされます。
 
 ### 機能
 

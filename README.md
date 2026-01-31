@@ -99,22 +99,23 @@ Task Butler supports shell completion for commands, options, and task IDs.
 ### Setup
 
 ```bash
-# Zsh (recommended - shows task titles)
+# Zsh (shows task titles)
 task-butler --install-completion zsh
 
-# Fish (recommended - shows task titles)
+# Fish (shows task titles)
 task-butler --install-completion fish
 
-# Bash (basic - IDs only)
-task-butler --install-completion bash
-
-# Bash (enhanced - shows task titles)
+# Bash (shows task titles)
+mkdir -p ~/.bash_completions
 curl -o ~/.bash_completions/task-butler.sh \
   https://raw.githubusercontent.com/dobachi/task-butler/main/scripts/task-butler-completion.bash
+echo 'source ~/.bash_completions/task-butler.sh' >> ~/.bashrc
 source ~/.bash_completions/task-butler.sh
 ```
 
 After installation, restart your shell or source the config file.
+
+> **Note**: For Bash, do NOT use `--install-completion bash` as it installs a basic version without task titles.
 
 ### Features
 
