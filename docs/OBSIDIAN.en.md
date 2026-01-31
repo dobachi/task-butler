@@ -9,6 +9,7 @@ This guide explains how to integrate Task Butler with the Obsidian Tasks plugin.
 - [Overview](#overview)
 - [Obsidian Tasks Format](#obsidian-tasks-format)
 - [Basic Usage](#basic-usage)
+- [Storage Format Option (--format)](#storage-format-option---format)
 - [Command Reference](#command-reference)
 - [Date Fields](#date-fields)
 - [Priority Levels](#priority-levels)
@@ -144,6 +145,61 @@ task-butler obsidian import ~/Documents/MyVault/daily/ --link
 
 # Use embed format for links
 task-butler obsidian import ~/Documents/MyVault/daily/ --link --link-format embed
+```
+
+## Storage Format Option (--format)
+
+### Overview
+
+The `--format` option controls the **storage format** of task files.
+
+```bash
+# Save in hybrid format (YAML frontmatter + Obsidian Tasks line)
+task-butler --format hybrid add "Task name"
+
+# Save in frontmatter format (default, YAML frontmatter only)
+task-butler --format frontmatter add "Task name"
+```
+
+### Important: Impact on Reading and Display
+
+The `--format` option only affects **write operations**:
+
+| Operation | --format Impact |
+|-----------|----------------|
+| **Save (add, done, start, etc.)** | ✅ Affected |
+| **Read (list, show, etc.)** | ❌ Not affected |
+| **Display format** | ❌ Not affected |
+
+Read behavior:
+- Data is always read from **YAML frontmatter** (source of truth)
+- Obsidian Tasks lines in the file body are stripped to prevent duplication
+- Using `--format hybrid` does NOT change the display format of `list` or `show`
+
+### Displaying in Obsidian Format
+
+If you need Obsidian Tasks format output from `list` or `show`, use the dedicated commands:
+
+```bash
+# Display all tasks in Obsidian format
+task-butler obsidian export
+
+# Display a single task in Obsidian format
+task-butler obsidian format abc12345
+```
+
+### Configuration
+
+Storage format is determined in the following order of precedence:
+
+1. **CLI option**: `--format hybrid`
+2. **Environment variable**: `TASK_BUTLER_FORMAT=hybrid`
+3. **Config file**: `~/.task-butler/config.toml`
+
+```toml
+# ~/.task-butler/config.toml
+[storage]
+format = "hybrid"  # "frontmatter" or "hybrid"
 ```
 
 ## Command Reference

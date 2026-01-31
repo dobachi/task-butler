@@ -9,6 +9,7 @@ Task ButlerとObsidian Tasksプラグインの連携方法について詳しく�
 - [概要](#概要)
 - [Obsidian Tasksフォーマット](#obsidian-tasksフォーマット)
 - [基本的な使い方](#基本的な使い方)
+- [ストレージ形式オプション（--format）](#ストレージ形式オプションformat)
 - [コマンドリファレンス](#コマンドリファレンス)
 - [日付フィールド](#日付フィールド)
 - [優先度](#優先度)
@@ -144,6 +145,61 @@ task-butler obsidian import ~/Documents/MyVault/daily/ --link
 
 # 埋め込み形式でリンク
 task-butler obsidian import ~/Documents/MyVault/daily/ --link --link-format embed
+```
+
+## ストレージ形式オプション（--format）
+
+### 概要
+
+`--format` オプションは、タスクファイルの**保存形式**を制御します。
+
+```bash
+# ハイブリッド形式で保存（YAML frontmatter + Obsidian Tasks行）
+task-butler --format hybrid add "タスク名"
+
+# frontmatter形式で保存（デフォルト、YAML frontmatterのみ）
+task-butler --format frontmatter add "タスク名"
+```
+
+### 重要：読み込みと表示への影響
+
+`--format` オプションは**書き込み時のみ**影響します：
+
+| 処理 | --format の影響 |
+|------|----------------|
+| **保存（add, done, start等）** | ✅ 影響する |
+| **読み込み（list, show等）** | ❌ 影響しない |
+| **表示形式** | ❌ 影響しない |
+
+読み込み時の動作：
+- データは常に**YAML frontmatter**から読み込まれます（source of truth）
+- ファイル本文のObsidian Tasks行は、重複防止のため除去されます
+- `--format hybrid` を指定しても `list` や `show` の表示形式は変わりません
+
+### Obsidian形式で表示するには
+
+`list` や `show` でObsidian Tasks形式の出力が必要な場合は、専用コマンドを使用してください：
+
+```bash
+# 全タスクをObsidian形式で表示
+task-butler obsidian export
+
+# 単一タスクをObsidian形式で表示
+task-butler obsidian format abc12345
+```
+
+### 設定方法
+
+ストレージ形式は以下の優先順で決定されます：
+
+1. **CLIオプション**: `--format hybrid`
+2. **環境変数**: `TASK_BUTLER_FORMAT=hybrid`
+3. **設定ファイル**: `~/.task-butler/config.toml`
+
+```toml
+# ~/.task-butler/config.toml
+[storage]
+format = "hybrid"  # "frontmatter" または "hybrid"
 ```
 
 ## コマンドリファレンス
