@@ -22,16 +22,22 @@ _task_butler_complete_task_id() {
 
     # Extract task IDs for completion (8-char hex IDs)
     local ids=$(echo "$tasks" | grep -oE '[a-f0-9]{8}')
-    COMPREPLY=($(compgen -W "$ids" -- "$cur"))
 
-    # Show task list only once per command line (track via temp file)
-    local cache_key=$(echo "$COMP_LINE" | md5sum | cut -d' ' -f1)
-    local cache_file="/tmp/.tb_comp_$cache_key"
+    # Build completion with "ID -- Title" format for display
+    local completions=()
+    while IFS= read -r line; do
+        local id=$(echo "$line" | grep -oE '[a-f0-9]{8}')
+        local title=$(echo "$line" | sed 's/^[○◐●✗] · [a-f0-9]\{8\} //')
+        if [[ -n "$id" ]]; then
+            completions+=("$id")
+        fi
+    done <<< "$tasks"
 
-    if [[ -z "$cur" && ${#COMPREPLY[@]} -gt 1 && ! -f "$cache_file" ]]; then
-        touch "$cache_file"
-        # Clean up old cache files
-        find /tmp -name '.tb_comp_*' -mmin +1 -delete 2>/dev/null
+    COMPREPLY=($(compgen -W "${completions[*]}" -- "$cur"))
+
+    # Show task list once when no input yet (use COMP_TYPE to detect first TAB)
+    # COMP_TYPE: 9=normal, 33=list (show-all), 37=menu, 63=list (partial), 64=list
+    if [[ -z "$cur" && ${#COMPREPLY[@]} -gt 0 && $COMP_TYPE -eq 63 ]]; then
         echo >&2
         echo "$tasks" >&2
     fi
