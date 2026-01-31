@@ -17,24 +17,34 @@
 
 ## インストール
 
-### uv toolを使用（推奨）
+### PyPIから（推奨）
+
+```bash
+pip install markdown-task-butler
+# または
+uv tool install markdown-task-butler
+```
+
+`task-butler`と`tb`コマンドがグローバルにインストールされます。
+
+### GitHubから
 
 ```bash
 uv tool install git+https://github.com/dobachi/task-butler.git
 ```
 
-`task-butler`と`tb`コマンドがグローバルにインストールされ、シェル補完も利用可能になります。
-
 ### アップグレード
 
 ```bash
-uv tool upgrade task-butler
+pip install --upgrade markdown-task-butler
+# または
+uv tool upgrade markdown-task-butler
 ```
 
 ### uvxで試す
 
 ```bash
-uvx --from git+https://github.com/dobachi/task-butler.git task-butler
+uvx markdown-task-butler
 ```
 
 注: `uvx`は一時的な環境で実行されます。シェル補完は利用できません。

@@ -17,24 +17,34 @@ Your digital butler for task management. A CLI tool that helps you manage tasks,
 
 ## Installation
 
-### Using uv tool (Recommended)
+### From PyPI (Recommended)
+
+```bash
+pip install markdown-task-butler
+# or
+uv tool install markdown-task-butler
+```
+
+This installs `task-butler` and `tb` commands globally.
+
+### From GitHub
 
 ```bash
 uv tool install git+https://github.com/dobachi/task-butler.git
 ```
 
-This installs `task-butler` and `tb` commands globally, with shell completion support.
-
 ### Upgrade
 
 ```bash
-uv tool upgrade task-butler
+pip install --upgrade markdown-task-butler
+# or
+uv tool upgrade markdown-task-butler
 ```
 
 ### Quick Try with uvx
 
 ```bash
-uvx --from git+https://github.com/dobachi/task-butler.git task-butler
+uvx markdown-task-butler
 ```
 
 Note: `uvx` runs in a temporary environment. Shell completion is not available.
@@ -99,7 +109,6 @@ task-butler --install-completion fish
 task-butler --install-completion bash
 
 # Bash (enhanced - shows task titles)
-# Download and source the custom script:
 curl -o ~/.bash_completions/task-butler.sh \
   https://raw.githubusercontent.com/dobachi/task-butler/main/scripts/task-butler-completion.bash
 source ~/.bash_completions/task-butler.sh
