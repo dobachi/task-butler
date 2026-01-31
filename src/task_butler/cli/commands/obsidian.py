@@ -262,7 +262,11 @@ def _import_single_file(
     for i, line in enumerate(lines, 1):
         original_line = line
         line = line.strip()
-        if not line.startswith("- ["):
+        # Check for Obsidian Tasks checkbox format: - [ ] or - [x] or - [X]
+        # Skip regular wiki links like - [[...]] which also start with "- ["
+        if not (
+            line.startswith("- [ ] ") or line.startswith("- [x] ") or line.startswith("- [X] ")
+        ):
             continue
 
         try:
