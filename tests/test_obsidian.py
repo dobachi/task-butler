@@ -29,6 +29,39 @@ class TestObsidianTasksFormat:
         # MEDIUM priority is default, no emoji
         assert "🔼" not in line
 
+    def test_to_obsidian_line_respects_obsidian_has_created(self, formatter):
+        """Test that obsidian_has_created flag controls ➕ output."""
+        # Task with obsidian_has_created=True (default) includes ➕
+        task_with = Task(title="Task with created", created_at=datetime(2025, 1, 15))
+        line_with = formatter.to_obsidian_line(task_with)
+        assert "➕ 2025-01-15" in line_with
+
+        # Task with obsidian_has_created=False omits ➕
+        task_without = Task(
+            title="Task without created",
+            created_at=datetime(2025, 1, 15),
+            obsidian_has_created=False,
+        )
+        line_without = formatter.to_obsidian_line(task_without)
+        assert "➕" not in line_without
+
+    def test_to_obsidian_line_include_created_override(self, formatter):
+        """Test that include_created parameter overrides obsidian_has_created."""
+        task = Task(
+            title="Test task",
+            created_at=datetime(2025, 1, 15),
+            obsidian_has_created=True,
+        )
+
+        # Override to False
+        line = formatter.to_obsidian_line(task, include_created=False)
+        assert "➕" not in line
+
+        # Override to True on task with obsidian_has_created=False
+        task.obsidian_has_created = False
+        line = formatter.to_obsidian_line(task, include_created=True)
+        assert "➕ 2025-01-15" in line
+
     def test_to_obsidian_line_completed(self, formatter):
         """Test converting a completed task."""
         task = Task(title="Done task")
@@ -944,3 +977,135 @@ Some other content
         loaded = manager.get(task.id)
         assert loaded.source_file == "daily/2025-01-25.md"
         assert loaded.source_line == 5
+
+
+class TestObsidianHasCreated:
+    """Tests for obsidian_has_created field handling."""
+
+    @pytest.fixture
+    def vault(self, tmp_path):
+        """Create a mock Obsidian vault."""
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        return vault
+
+    @pytest.fixture
+    def manager(self, vault):
+        """Create a task manager with storage inside vault."""
+        from task_butler.core.task_manager import TaskManager
+
+        storage = vault / "Tasks"
+        return TaskManager(storage)
+
+    def test_import_task_without_created_sets_flag_false(self, vault, manager):
+        """Test that importing a task without ➕ sets obsidian_has_created=False."""
+        from task_butler.cli.commands.obsidian import (
+            DuplicateAction,
+            _import_single_file,
+        )
+        from task_butler.storage.obsidian import ObsidianTasksFormat
+
+        # Create file WITHOUT ➕
+        file = vault / "test.md"
+        file.write_text("- [ ] Task without created 📅 2026-02-01 #work")
+
+        formatter = ObsidianTasksFormat()
+        global_action = {}
+
+        imported, updated, skipped, errors, task_infos = _import_single_file(
+            file,
+            manager,
+            formatter,
+            DuplicateAction.SKIP,
+            dry_run=False,
+            global_action=global_action,
+            vault_root=vault,
+            source_file_relative="test.md",
+        )
+
+        assert len(imported) == 1
+        task = imported[0]
+        assert task.obsidian_has_created is False
+
+        # Verify format output doesn't include ➕
+        line = formatter.to_obsidian_line(task)
+        assert "➕" not in line
+
+    def test_import_task_with_created_sets_flag_true(self, vault, manager):
+        """Test that importing a task with ➕ sets obsidian_has_created=True."""
+        from task_butler.cli.commands.obsidian import (
+            DuplicateAction,
+            _import_single_file,
+        )
+        from task_butler.storage.obsidian import ObsidianTasksFormat
+
+        # Create file WITH ➕
+        file = vault / "test.md"
+        file.write_text("- [ ] Task with created 📅 2026-02-01 ➕ 2026-01-15 #work")
+
+        formatter = ObsidianTasksFormat()
+        global_action = {}
+
+        imported, updated, skipped, errors, task_infos = _import_single_file(
+            file,
+            manager,
+            formatter,
+            DuplicateAction.SKIP,
+            dry_run=False,
+            global_action=global_action,
+            vault_root=vault,
+            source_file_relative="test.md",
+        )
+
+        assert len(imported) == 1
+        task = imported[0]
+        assert task.obsidian_has_created is True
+        assert task.created_at == datetime(2026, 1, 15)
+
+        # Verify format output includes ➕
+        line = formatter.to_obsidian_line(task)
+        assert "➕ 2026-01-15" in line
+
+    def test_obsidian_has_created_persisted_in_storage(self, vault, manager):
+        """Test that obsidian_has_created is persisted and loaded from storage."""
+        # Create task with obsidian_has_created=False
+        task = manager.add(title="Test task")
+        task.obsidian_has_created = False
+        manager.repository.update(task)
+
+        # Reload task
+        loaded = manager.get(task.id)
+        assert loaded.obsidian_has_created is False
+
+        # Create another task with default (True)
+        task2 = manager.add(title="Test task 2")
+        manager.repository.update(task2)
+
+        loaded2 = manager.get(task2.id)
+        assert loaded2.obsidian_has_created is True
+
+    def test_hybrid_format_respects_obsidian_has_created(self, tmp_path):
+        """Test that hybrid format respects obsidian_has_created when saving."""
+        from task_butler.storage.markdown import MarkdownStorage
+        from task_butler.storage.obsidian import ObsidianTasksFormat
+
+        storage = MarkdownStorage(tmp_path, format="hybrid")
+        formatter = ObsidianTasksFormat()
+
+        # Create task without created flag
+        task = Task(
+            title="Test task",
+            due_date=datetime(2026, 2, 1),
+            created_at=datetime(2026, 1, 15),
+            obsidian_has_created=False,
+        )
+        path = storage.save(task)
+
+        # Read file content directly
+        content = path.read_text()
+
+        # The Obsidian line should NOT contain ➕
+        assert "- [ ] Test task" in content
+        assert "📅 2026-02-01" in content
+        assert "➕" not in content

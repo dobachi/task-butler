@@ -376,7 +376,13 @@ def _import_single_file(
                 if source_file_relative:
                     task.source_file = source_file_relative
                     task.source_line = i
-                    manager.repository.update(task)
+
+                # Set obsidian_has_created based on whether source had ➕
+                task.obsidian_has_created = parsed.created_at is not None
+                if parsed.created_at:
+                    task.created_at = parsed.created_at
+
+                manager.repository.update(task)
 
                 # Update status if completed
                 if parsed.is_completed:
@@ -886,3 +892,140 @@ def format_task(
 
     line = formatter.to_obsidian_line(task)
     console.print(line)
+
+
+@obsidian_app.command(name="fix-created")
+def fix_created(
+    ctx: typer.Context,
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Show what would be changed without making changes"
+    ),
+    vault_root_opt: Optional[Path] = typer.Option(
+        None,
+        "--vault-root",
+        "-v",
+        help="Obsidian vault root (auto-detected if not specified)",
+    ),
+) -> None:
+    """Fix obsidian_has_created for imported tasks.
+
+    Checks tasks that have source_file set and updates obsidian_has_created
+    based on whether the original source had ➕ (created date).
+
+    This is useful to fix tasks that were imported before this feature was added.
+
+    Examples:
+        # Preview changes
+        task-butler obsidian fix-created --dry-run
+
+        # Apply fixes
+        task-butler obsidian fix-created
+    """
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(
+        storage_dir, format=storage_format, organization=organization, kanban_dirs=kanban_dirs
+    )
+    formatter = ObsidianTasksFormat()
+
+    # Find vault root
+    vault_root = config.get_vault_root(vault_root_opt)
+    if vault_root is None:
+        vault_root = find_vault_root(storage_dir)
+
+    if vault_root is None:
+        console.print("[red]Error:[/red] Could not find Obsidian vault root (.obsidian directory)")
+        console.print("[dim]Specify with --vault-root or set obsidian.vault_root in config[/dim]")
+        raise typer.Exit(1)
+
+    # Get all tasks with source_file
+    all_tasks = manager.list(include_done=True)
+    imported_tasks = [t for t in all_tasks if t.source_file]
+
+    if not imported_tasks:
+        console.print("[dim]No imported tasks found (no tasks with source_file)[/dim]")
+        return
+
+    console.print(f"[bold]Checking {len(imported_tasks)} imported task(s)...[/bold]")
+    if dry_run:
+        console.print("[dim](dry run mode)[/dim]")
+
+    fixed_count = 0
+    error_count = 0
+
+    for task in imported_tasks:
+        source_path = vault_root / task.source_file
+        if not source_path.exists():
+            console.print(
+                f"[yellow]⚠[/yellow] {task.short_id}: Source file not found: {task.source_file}"
+            )
+            error_count += 1
+            continue
+
+        # Read source file and find the original line
+        try:
+            content = source_path.read_text(encoding="utf-8")
+            lines = content.split("\n")
+
+            # Find the task line
+            original_line = None
+            if task.source_line and 1 <= task.source_line <= len(lines):
+                original_line = lines[task.source_line - 1].strip()
+            else:
+                # Search for matching task title
+                for line in lines:
+                    stripped = line.strip()
+                    if (
+                        stripped.startswith("- [ ]") or stripped.lower().startswith("- [x]")
+                    ) and task.title in stripped:
+                        original_line = stripped
+                        break
+
+            if not original_line:
+                console.print(
+                    f"[yellow]⚠[/yellow] {task.short_id}: Could not find task line in source"
+                )
+                error_count += 1
+                continue
+
+            # Check if original line has ➕
+            has_created_in_source = "➕" in original_line
+
+            # Only fix if there's a mismatch
+            if task.obsidian_has_created != has_created_in_source:
+                if dry_run:
+                    action = "would add ➕" if has_created_in_source else "would remove ➕"
+                    console.print(f"  [blue]FIX[/blue] {task.short_id}: {task.title} ({action})")
+                else:
+                    task.obsidian_has_created = has_created_in_source
+                    # Also update created_at if source has it
+                    if has_created_in_source:
+                        try:
+                            parsed = formatter.from_obsidian_line(original_line)
+                            if parsed.created_at:
+                                task.created_at = parsed.created_at
+                        except ValueError:
+                            pass
+                    manager.repository.update(task)
+                    action = "added ➕" if has_created_in_source else "removed ➕"
+                    console.print(f"  [green]✓[/green] {task.short_id}: {task.title} ({action})")
+                fixed_count += 1
+
+        except Exception as e:
+            console.print(f"[red]✗[/red] {task.short_id}: Error reading source: {e}")
+            error_count += 1
+
+    # Summary
+    console.print()
+    if fixed_count == 0 and error_count == 0:
+        console.print("[green]✓[/green] All imported tasks already have correct settings")
+    else:
+        action = "Would fix" if dry_run else "Fixed"
+        console.print(f"[bold]{action} {fixed_count} task(s)[/bold]")
+        if error_count > 0:
+            console.print(f"[yellow]Errors: {error_count}[/yellow]")

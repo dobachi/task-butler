@@ -107,11 +107,13 @@ class ObsidianTasksFormat:
         r"🔁\s*([^\s🔺⏫🔼🔽⏬📅⏳🛫➕✅#]+(?:\s+[^\s🔺⏫🔼🔽⏬📅⏳🛫➕✅#]+)*)"
     )
 
-    def to_obsidian_line(self, task: Task) -> str:
+    def to_obsidian_line(self, task: Task, include_created: bool | None = None) -> str:
         """Convert a Task to an Obsidian Tasks format line.
 
         Args:
             task: The Task to convert.
+            include_created: Override whether to include ➕ created date.
+                            If None, uses task.obsidian_has_created.
 
         Returns:
             A string in Obsidian Tasks format.
@@ -146,8 +148,11 @@ class ObsidianTasksFormat:
         if task.start_date:
             parts.append(f"🛫 {task.start_date.strftime('%Y-%m-%d')}")
 
-        # Created date
-        if task.created_at:
+        # Created date - respect task's obsidian_has_created flag
+        should_include_created = (
+            include_created if include_created is not None else task.obsidian_has_created
+        )
+        if task.created_at and should_include_created:
             parts.append(f"➕ {task.created_at.strftime('%Y-%m-%d')}")
 
         # Completed date

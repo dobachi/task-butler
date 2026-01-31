@@ -253,6 +253,8 @@ class MarkdownStorage:
             metadata["source_file"] = task.source_file
         if task.source_line:
             metadata["source_line"] = task.source_line
+        if not task.obsidian_has_created:
+            metadata["obsidian_has_created"] = False
 
         # Build content
         content_parts = []
@@ -373,6 +375,7 @@ class MarkdownStorage:
             notes=notes,
             source_file=metadata.get("source_file"),
             source_line=metadata.get("source_line"),
+            obsidian_has_created=metadata.get("obsidian_has_created", True),
         )
 
         return task

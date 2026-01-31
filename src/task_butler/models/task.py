@@ -64,6 +64,7 @@ class Task(BaseModel):
     # Source tracking (for imports)
     source_file: str | None = None  # Original file path (relative to Vault)
     source_line: int | None = None  # Original line number in source file
+    obsidian_has_created: bool = True  # Whether to include ➕ in Obsidian output
 
     def add_note(self, content: str) -> None:
         """Add a note to the task."""
