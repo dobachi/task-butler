@@ -355,3 +355,26 @@ class TestConfigCommand:
         result = runner.invoke(app, ["config", "set", "storage.dir", "/custom/path"])
         assert result.exit_code == 0
         assert "Set storage.dir = /custom/path" in result.output
+
+    def test_config_init(self, config_setup):
+        """Test config init wizard."""
+        # Simulate user input: format=2 (hybrid), dir=default
+        result = runner.invoke(app, ["config", "init"], input="2\n\n")
+        assert result.exit_code == 0
+        assert "Configuration saved" in result.output
+        assert "hybrid" in result.output
+
+    def test_config_init_with_existing(self, config_setup):
+        """Test config init with existing config (cancel)."""
+        # Set something first
+        runner.invoke(app, ["config", "set", "storage.format", "frontmatter"])
+
+        # Reset config to reload
+        import task_butler.config
+
+        task_butler.config._config = None
+
+        # Try init and cancel
+        result = runner.invoke(app, ["config", "init"], input="n\n")
+        assert result.exit_code == 0
+        assert "Cancelled" in result.output

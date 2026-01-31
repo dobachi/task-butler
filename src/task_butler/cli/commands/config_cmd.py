@@ -75,3 +75,50 @@ def config_set(
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
+
+
+@config_app.command(name="init")
+def config_init() -> None:
+    """Initialize configuration with interactive wizard."""
+    from ...config import get_config
+
+    config = get_config()
+
+    console.print("[bold]Task Butler Configuration Wizard[/bold]\n")
+
+    # Check if config already exists
+    if config.get_all():
+        overwrite = typer.confirm("Configuration already exists. Overwrite?", default=False)
+        if not overwrite:
+            console.print("[yellow]Cancelled[/yellow]")
+            raise typer.Exit(0)
+
+    # Storage format
+    console.print("[cyan]Storage Format:[/cyan]")
+    console.print("  1. frontmatter - YAML frontmatter only (default)")
+    console.print("  2. hybrid - YAML frontmatter + Obsidian Tasks line")
+    format_choice = typer.prompt(
+        "Choose format",
+        default="1",
+        show_choices=False,
+    )
+    storage_format = "hybrid" if format_choice == "2" else "frontmatter"
+
+    # Storage directory
+    console.print("\n[cyan]Storage Directory:[/cyan]")
+    default_dir = str(config.CONFIG_DIR / "tasks")
+    storage_dir = typer.prompt(
+        "Task storage directory",
+        default=default_dir,
+    )
+
+    # Apply settings
+    config.set_value("storage.format", storage_format)
+    if storage_dir != default_dir:
+        config.set_value("storage.dir", storage_dir)
+    config.save()
+
+    console.print("\n[green]✓ Configuration saved![/green]")
+    console.print(f"  storage.format = {storage_format}")
+    console.print(f"  storage.dir = {storage_dir}")
+    console.print(f"\nConfig file: {config.CONFIG_PATH}")
