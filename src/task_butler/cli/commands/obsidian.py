@@ -461,6 +461,12 @@ def import_tasks(
         "--link-format",
         help="Link format: 'wiki' ([[path|title]]) or 'embed' (![[path|title]])",
     ),
+    vault_root_opt: Optional[Path] = typer.Option(
+        None,
+        "--vault-root",
+        "-v",
+        help="Obsidian vault root (auto-detected if not specified)",
+    ),
 ) -> None:
     """Import tasks from Obsidian markdown file(s).
 
@@ -528,16 +534,14 @@ def import_tasks(
     manager = TaskManager(storage_dir, format=storage_format)
     formatter = ObsidianTasksFormat()
 
-    # Find vault root if link mode is enabled
-    vault_root: Path | None = None
-    if link:
+    # Find vault root: CLI option > config > auto-detect
+    vault_root = config.get_vault_root(vault_root_opt)
+    if vault_root is None and link:
         vault_root = find_vault_root(path)
-        if vault_root is None:
-            console.print(
-                "[red]Error:[/red] Could not find Obsidian vault root (.obsidian directory)"
-            )
-            console.print("[dim]Make sure the import path is inside an Obsidian vault[/dim]")
-            raise typer.Exit(1)
+    if link and vault_root is None:
+        console.print("[red]Error:[/red] Could not find Obsidian vault root (.obsidian directory)")
+        console.print("[dim]Specify with --vault-root or set obsidian.vault_root in config[/dim]")
+        raise typer.Exit(1)
 
         # Check if storage is inside the vault
         try:

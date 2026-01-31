@@ -127,6 +127,11 @@ class Config:
                 pass  # Any path is valid
             else:
                 raise ValueError(f"Unknown storage key: {name}")
+        elif section == "obsidian":
+            if name == "vault_root":
+                pass  # Any path is valid
+            else:
+                raise ValueError(f"Unknown obsidian key: {name}")
         else:
             raise ValueError(f"Unknown section: {section}")
 
@@ -142,6 +147,24 @@ class Config:
             A copy of the configuration dictionary
         """
         return self._file_config.copy()
+
+    def get_vault_root(self, cli_vault_root: Path | None = None) -> Path | None:
+        """Get Obsidian vault root with precedence: CLI > file > None.
+
+        Args:
+            cli_vault_root: Vault root specified via CLI option (highest priority)
+
+        Returns:
+            The vault root path or None if not set
+        """
+        if cli_vault_root:
+            return cli_vault_root
+
+        file_vault_root = self._file_config.get("obsidian", {}).get("vault_root")
+        if file_vault_root:
+            return Path(file_vault_root)
+
+        return None
 
     def save(self) -> None:
         """Save configuration to file."""

@@ -112,13 +112,26 @@ def config_init() -> None:
         default=default_dir,
     )
 
+    # Obsidian vault root (optional)
+    console.print("\n[cyan]Obsidian Vault Root (optional):[/cyan]")
+    console.print("[dim]Set this if you use Obsidian integration[/dim]")
+    vault_root = typer.prompt(
+        "Vault root path",
+        default="",
+        show_default=False,
+    )
+
     # Apply settings
     config.set_value("storage.format", storage_format)
     if storage_dir != default_dir:
         config.set_value("storage.dir", storage_dir)
+    if vault_root:
+        config.set_value("obsidian.vault_root", vault_root)
     config.save()
 
     console.print("\n[green]✓ Configuration saved![/green]")
     console.print(f"  storage.format = {storage_format}")
     console.print(f"  storage.dir = {storage_dir}")
+    if vault_root:
+        console.print(f"  obsidian.vault_root = {vault_root}")
     console.print(f"\nConfig file: {config.CONFIG_PATH}")

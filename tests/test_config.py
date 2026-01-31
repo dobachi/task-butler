@@ -194,6 +194,42 @@ class TestConfig:
         new_config = Config()
         assert new_config.get_storage_dir() == Path("/custom/tasks")
 
+    def test_set_value_vault_root(self, config):
+        """Test setting vault_root value."""
+        config.set_value("obsidian.vault_root", "/path/to/vault")
+        assert config.get_value("obsidian.vault_root") == "/path/to/vault"
+
+    def test_set_value_unknown_obsidian_key(self, config):
+        """Test setting unknown obsidian key raises error."""
+        with pytest.raises(ValueError, match="Unknown obsidian key"):
+            config.set_value("obsidian.unknown", "value")
+
+    def test_get_vault_root_cli(self, config):
+        """Test CLI vault root takes precedence."""
+        from pathlib import Path
+
+        config.set_value("obsidian.vault_root", "/config/vault")
+        cli_path = Path("/cli/vault")
+        assert config.get_vault_root(cli_path) == cli_path
+
+    def test_get_vault_root_from_file(self, config_dir, monkeypatch):
+        """Test vault root from file config."""
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.toml"
+        config_path.write_text('[obsidian]\nvault_root = "/my/vault"\n')
+
+        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(Config, "CONFIG_PATH", config_path)
+
+        from pathlib import Path
+
+        new_config = Config()
+        assert new_config.get_vault_root() == Path("/my/vault")
+
+    def test_get_vault_root_none(self, config):
+        """Test vault root returns None when not set."""
+        assert config.get_vault_root() is None
+
 
 class TestGetConfig:
     """Tests for get_config function."""
