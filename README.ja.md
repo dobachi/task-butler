@@ -82,14 +82,20 @@ uv tool install git+https://github.com/dobachi/task-butler.git
 ### インストール
 
 ```bash
-# Bash
-task-butler --install-completion bash
-
-# Zsh
+# Zsh（推奨 - タスクタイトル表示）
 task-butler --install-completion zsh
 
-# Fish
+# Fish（推奨 - タスクタイトル表示）
 task-butler --install-completion fish
+
+# Bash（基本 - IDのみ）
+task-butler --install-completion bash
+
+# Bash（拡張 - タスクタイトル表示）
+# カスタムスクリプトをダウンロードして読み込み:
+curl -o ~/.bash_completions/task-butler.sh \
+  https://raw.githubusercontent.com/dobachi/task-butler/main/scripts/task-butler-completion.bash
+source ~/.bash_completions/task-butler.sh
 ```
 
 インストール後、シェルを再起動するか設定ファイルを再読み込みしてください。
@@ -98,11 +104,9 @@ task-butler --install-completion fish
 
 - **コマンド補完**: Tabでコマンド名を補完（`task-butler st<TAB>` -> `start`）
 - **オプション補完**: Tabでオプション名を補完（`--pri<TAB>` -> `--priority`）
-- **タスクID補完**: TabでマッチするタスクIDを表示
+- **タスクID補完**: TabでマッチするタスクIDとタイトルを表示
   - オープンコマンド（`start`、`done`、`cancel`）はpending/in_progressのタスクのみ表示
   - その他のコマンド（`show`、`delete`、`note`）は全タスクを表示
-  - **Zsh/Fish**: タスクIDとタイトルを表示（推奨）
-  - **Bash**: タスクIDのみ表示（タイトルは`task-butler list`で確認）
 - **プロジェクト名補完**: `--project`オプションで利用可能
 - **タグ名補完**: `--tag`オプションで利用可能
 

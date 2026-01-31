@@ -82,14 +82,20 @@ uv tool install git+https://github.com/dobachi/task-butler.git
 ### Installation
 
 ```bash
-# Bash
-task-butler --install-completion bash
-
-# Zsh
+# Zsh (recommended - shows task titles)
 task-butler --install-completion zsh
 
-# Fish
+# Fish (recommended - shows task titles)
 task-butler --install-completion fish
+
+# Bash (basic - IDs only)
+task-butler --install-completion bash
+
+# Bash (enhanced - shows task titles)
+# Download and source the custom script:
+curl -o ~/.bash_completions/task-butler.sh \
+  https://raw.githubusercontent.com/dobachi/task-butler/main/scripts/task-butler-completion.bash
+source ~/.bash_completions/task-butler.sh
 ```
 
 After installation, restart your shell or source the config file.
@@ -98,11 +104,9 @@ After installation, restart your shell or source the config file.
 
 - **Command completion**: Tab to complete command names (`task-butler st<TAB>` -> `start`)
 - **Option completion**: Tab to complete option names (`--pri<TAB>` -> `--priority`)
-- **Task ID completion**: Tab to see matching task IDs
+- **Task ID completion**: Tab to see matching task IDs with titles
   - Open commands (`start`, `done`, `cancel`) show only pending/in_progress tasks
   - Other commands (`show`, `delete`, `note`) show all tasks
-  - **Zsh/Fish**: Shows task ID with title (recommended)
-  - **Bash**: Shows task ID only (use `task-butler list` to see titles)
 - **Project name completion**: Available for `--project` option
 - **Tag name completion**: Available for `--tag` option
 
