@@ -630,6 +630,92 @@ class TestMarkdownStorageHybridMode:
         result4 = storage_hybrid._strip_obsidian_lines(content4)
         assert result4 == "Just a description"
 
+    def test_hybrid_with_source_file(self, storage_hybrid, tmp_path):
+        """Test that source file link is included in hybrid mode."""
+        task = Task(
+            title="Imported task",
+            source_file="daily/2025-01-31.md",
+            source_line=5,
+        )
+        storage_hybrid.save(task)
+
+        content = (tmp_path / f"{task.short_id}_Imported_task.md").read_text()
+        assert "Imported from: [[daily/2025-01-31.md]]" in content
+
+    def test_hybrid_source_file_no_duplication(self, storage_hybrid, tmp_path):
+        """Test that source file link is not duplicated on multiple saves."""
+        task = Task(
+            title="Imported task",
+            source_file="notes.md",
+        )
+        storage_hybrid.save(task)
+        loaded = storage_hybrid.load(task.id)
+        storage_hybrid.save(loaded)
+
+        content = (tmp_path / f"{task.short_id}_Imported_task.md").read_text()
+        assert content.count("Imported from: [[notes.md]]") == 1
+
+    def test_hybrid_source_file_three_saves(self, storage_hybrid, tmp_path):
+        """Test that source file link is not duplicated after three saves."""
+        task = Task(
+            title="Multi save source",
+            source_file="original.md",
+            source_line=10,
+        )
+
+        # Save 1
+        storage_hybrid.save(task)
+
+        # Load and save 2
+        loaded = storage_hybrid.load(task.id)
+        loaded.add_note("Note 1")
+        storage_hybrid.save(loaded)
+
+        # Load and save 3
+        loaded = storage_hybrid.load(task.id)
+        loaded.add_note("Note 2")
+        path = storage_hybrid.save(loaded)
+
+        content = path.read_text()
+
+        # Should have exactly one source link
+        assert content.count("Imported from: [[original.md]]") == 1
+
+        # Notes should still be preserved
+        assert "Note 1" in content
+        assert "Note 2" in content
+
+    def test_strip_source_line_helper(self, storage_hybrid):
+        """Test _strip_source_line helper method directly."""
+        # Test with Imported from format
+        content1 = "Imported from: [[notes.md]]\n\nDescription here"
+        result1 = storage_hybrid._strip_source_line(content1)
+        assert "Imported from:" not in result1
+        assert "Description here" in result1
+
+        # Test with Source format (legacy)
+        content2 = "Source: [[old.md]]\n\nMore content"
+        result2 = storage_hybrid._strip_source_line(content2)
+        assert "Source:" not in result2
+        assert "More content" in result2
+
+        # Test with no source line
+        content3 = "Just a description"
+        result3 = storage_hybrid._strip_source_line(content3)
+        assert result3 == "Just a description"
+
+    def test_frontmatter_with_source_file(self, storage_frontmatter, tmp_path):
+        """Test that source file link is included in frontmatter mode too."""
+        task = Task(
+            title="Imported frontmatter",
+            source_file="vault/tasks.md",
+            source_line=3,
+        )
+        storage_frontmatter.save(task)
+
+        content = (tmp_path / f"{task.short_id}_Imported_frontmatter.md").read_text()
+        assert "Imported from: [[vault/tasks.md]]" in content
+
 
 class TestTaskRepositoryWithFormat:
     """Tests for TaskRepository with format parameter."""

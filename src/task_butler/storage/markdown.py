@@ -201,6 +201,11 @@ class MarkdownStorage:
             content_parts.append(obsidian_line)
             content_parts.append("")  # Empty line after Obsidian Tasks line
 
+        # Add source link if available (from import)
+        if task.source_file:
+            content_parts.append(f"Imported from: [[{task.source_file}]]")
+            content_parts.append("")
+
         if task.description:
             content_parts.append(task.description)
 
@@ -276,6 +281,9 @@ class MarkdownStorage:
         # This prevents duplication when saving in hybrid mode
         description = self._strip_obsidian_lines(description)
 
+        # Strip source link line from description (prevents duplication on save/load cycles)
+        description = self._strip_source_line(description)
+
         # Build task
         task = Task(
             id=metadata["id"],
@@ -342,5 +350,25 @@ class MarkdownStorage:
             filtered_lines.append(line)
 
         # Remove leading/trailing empty lines that might result from stripping
+        result = "\n".join(filtered_lines)
+        return result.strip()
+
+    def _strip_source_line(self, content: str) -> str:
+        """Strip source link line from content.
+
+        Removes lines that start with "Imported from: [[" or "Source: [[".
+        This prevents duplication when saving/loading in hybrid mode.
+        """
+        lines = content.split("\n")
+        filtered_lines = []
+        for line in lines:
+            stripped = line.strip()
+            # Skip source link lines
+            if stripped.startswith("Imported from: [[") or stripped.startswith(
+                "Source: [["
+            ):
+                continue
+            filtered_lines.append(line)
+
         result = "\n".join(filtered_lines)
         return result.strip()
