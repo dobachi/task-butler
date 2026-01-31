@@ -196,10 +196,7 @@ def _collect_files(
     # Exclude storage directory if provided
     if exclude_dir and exclude_dir.exists():
         exclude_dir_resolved = exclude_dir.resolve()
-        result = [
-            f for f in result
-            if not f.resolve().is_relative_to(exclude_dir_resolved)
-        ]
+        result = [f for f in result if not f.resolve().is_relative_to(exclude_dir_resolved)]
 
     return sorted(result)
 

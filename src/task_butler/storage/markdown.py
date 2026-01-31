@@ -364,9 +364,7 @@ class MarkdownStorage:
         for line in lines:
             stripped = line.strip()
             # Skip source link lines
-            if stripped.startswith("Imported from: [[") or stripped.startswith(
-                "Source: [["
-            ):
+            if stripped.startswith("Imported from: [[") or stripped.startswith("Source: [["):
                 continue
             filtered_lines.append(line)
 

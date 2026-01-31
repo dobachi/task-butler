@@ -415,8 +415,7 @@ class TestImportExcludeStorageDir:
 
         # Create a task file in storage (should be excluded)
         (storage / "abc12345_Existing.md").write_text(
-            "---\nid: abc12345\ntitle: Existing\nstatus: pending\n---\n"
-            "- [ ] Existing\n"
+            "---\nid: abc12345\ntitle: Existing\nstatus: pending\n---\n- [ ] Existing\n"
         )
 
         # Create a note with task (should be imported)
@@ -470,7 +469,7 @@ class TestImportExcludeStorageDir:
         (storage / "task1.md").write_text("- [ ] Task 1")
         (nested / "archived.md").write_text("- [ ] Archived")
         (vault / "notes.md").write_text("- [ ] Notes")
-        (vault / "daily" ).mkdir()
+        (vault / "daily").mkdir()
         (vault / "daily" / "2025-01-01.md").write_text("- [ ] Daily note")
 
         # Import with exclude_dir
@@ -538,7 +537,9 @@ class TestImportExcludeStorageDir:
         nonexistent_storage = vault / "NonExistent"  # Does not exist
 
         # Import with nonexistent exclude_dir
-        files = _collect_files(vault, recursive=True, pattern="*.md", exclude_dir=nonexistent_storage)
+        files = _collect_files(
+            vault, recursive=True, pattern="*.md", exclude_dir=nonexistent_storage
+        )
 
         # Assert: All files are collected (nonexistent dir is ignored)
         assert len(files) == 2
