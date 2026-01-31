@@ -131,7 +131,9 @@ def export_tasks(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=storage_format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=storage_format, organization=organization, kanban_dirs=kanban_dirs)
     formatter = ObsidianTasksFormat()
 
     tasks = manager.list(include_done=include_done)
@@ -531,7 +533,9 @@ def import_tasks(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=storage_format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=storage_format, organization=organization, kanban_dirs=kanban_dirs)
     formatter = ObsidianTasksFormat()
 
     # Find vault root: CLI option > config > auto-detect
@@ -664,7 +668,9 @@ def check_conflicts(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=storage_format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=storage_format, organization=organization, kanban_dirs=kanban_dirs)
     formatter = ObsidianTasksFormat()
 
     tasks = manager.list(include_done=True)
@@ -736,7 +742,9 @@ def resolve_conflicts(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=storage_format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=storage_format, organization=organization, kanban_dirs=kanban_dirs)
     formatter = ObsidianTasksFormat()
 
     if strategy not in ("frontmatter", "obsidian"):
@@ -848,7 +856,9 @@ def format_task(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=storage_format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=storage_format, organization=organization, kanban_dirs=kanban_dirs)
     formatter = ObsidianTasksFormat()
 
     try:

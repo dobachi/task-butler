@@ -358,8 +358,8 @@ class TestConfigCommand:
 
     def test_config_init(self, config_setup):
         """Test config init wizard."""
-        # Simulate user input: format=2 (hybrid), dir=default, vault_root=empty
-        result = runner.invoke(app, ["config", "init"], input="2\n\n\n")
+        # Simulate user input: format=2 (hybrid), dir=default, vault_root=empty, organization=1 (flat)
+        result = runner.invoke(app, ["config", "init"], input="2\n\n\n1\n")
         assert result.exit_code == 0
         assert "Configuration saved" in result.output
         assert "hybrid" in result.output

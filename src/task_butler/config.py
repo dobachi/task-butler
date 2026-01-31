@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 StorageFormat = Literal["frontmatter", "hybrid"]
+OrganizationMethod = Literal["flat", "kanban"]
 
 
 class Config:
@@ -92,33 +93,44 @@ class Config:
         """Get a configuration value by key.
 
         Args:
-            key: Config key in dot notation (e.g., "storage.format")
+            key: Config key in dot notation (e.g., "storage.format", "organization.kanban.backlog")
 
         Returns:
             The value if set, None otherwise
         """
         parts = key.split(".")
-        if len(parts) != 2:
-            return None
-        section, name = parts
-        return self._file_config.get(section, {}).get(name)
+        if len(parts) == 2:
+            section, name = parts
+            return self._file_config.get(section, {}).get(name)
+        elif len(parts) == 3:
+            section, subsection, name = parts
+            return self._file_config.get(section, {}).get(subsection, {}).get(name)
+        return None
 
     def set_value(self, key: str, value: str) -> None:
         """Set a configuration value.
 
         Args:
-            key: Config key in dot notation (e.g., "storage.format")
+            key: Config key in dot notation (e.g., "storage.format", "organization.kanban.backlog")
             value: Value to set
 
         Raises:
             ValueError: If key is invalid or value is not allowed
         """
         parts = key.split(".")
-        if len(parts) != 2:
+        if len(parts) not in (2, 3):
             raise ValueError(f"Invalid key: {key}")
 
-        section, name = parts
+        # Validate and set value
+        if len(parts) == 2:
+            section, name = parts
+            self._validate_and_set_2level(section, name, value)
+        else:
+            section, subsection, name = parts
+            self._validate_and_set_3level(section, subsection, name, value)
 
+    def _validate_and_set_2level(self, section: str, name: str, value: str) -> None:
+        """Validate and set a 2-level config key."""
         if section == "storage":
             if name == "format":
                 if value not in ("frontmatter", "hybrid"):
@@ -132,6 +144,12 @@ class Config:
                 pass  # Any path is valid
             else:
                 raise ValueError(f"Unknown obsidian key: {name}")
+        elif section == "organization":
+            if name == "method":
+                if value not in ("flat", "kanban"):
+                    raise ValueError(f"Invalid method: {value}. Must be 'flat' or 'kanban'")
+            else:
+                raise ValueError(f"Unknown organization key: {name}")
         else:
             raise ValueError(f"Unknown section: {section}")
 
@@ -139,6 +157,23 @@ class Config:
         if section not in self._file_config:
             self._file_config[section] = {}
         self._file_config[section][name] = value
+
+    def _validate_and_set_3level(self, section: str, subsection: str, name: str, value: str) -> None:
+        """Validate and set a 3-level config key."""
+        if section == "organization" and subsection == "kanban":
+            if name in ("backlog", "in_progress", "done", "cancelled"):
+                pass  # Any directory name is valid
+            else:
+                raise ValueError(f"Unknown organization.kanban key: {name}")
+        else:
+            raise ValueError(f"Unknown section: {section}.{subsection}")
+
+        # Update in-memory config
+        if section not in self._file_config:
+            self._file_config[section] = {}
+        if subsection not in self._file_config[section]:
+            self._file_config[section][subsection] = {}
+        self._file_config[section][subsection][name] = value
 
     def get_all(self) -> dict:
         """Get all configuration values.
@@ -165,6 +200,32 @@ class Config:
             return Path(file_vault_root)
 
         return None
+
+    def get_organization_method(self) -> OrganizationMethod:
+        """Get organization method: 'flat' or 'kanban'.
+
+        Returns:
+            The organization method to use
+        """
+        method = self._file_config.get("organization", {}).get("method", "flat")
+        if method in ("flat", "kanban"):
+            return method  # type: ignore
+        return "flat"
+
+    def get_kanban_dirs(self) -> dict[str, str]:
+        """Get Kanban directory names.
+
+        Returns:
+            Dictionary mapping status to directory name
+        """
+        defaults = {
+            "backlog": "Backlog",
+            "in_progress": "InProgress",
+            "done": "Done",
+            "cancelled": "Cancelled",
+        }
+        kanban_config = self._file_config.get("organization", {}).get("kanban", {})
+        return {**defaults, **kanban_config}
 
     def save(self) -> None:
         """Save configuration to file."""

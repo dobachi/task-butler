@@ -908,3 +908,139 @@ class TestShortIdSupport:
         loaded = test_repo.get("dddd")
         assert loaded is not None
         assert loaded.id == task_b.id
+
+
+class TestKanbanOrganization:
+    """Tests for Kanban organization mode."""
+
+    @pytest.fixture
+    def kanban_storage(self, tmp_path):
+        """Create a Kanban storage instance."""
+        return MarkdownStorage(tmp_path, organization="kanban")
+
+    @pytest.fixture
+    def custom_kanban_storage(self, tmp_path):
+        """Create a Kanban storage with custom directory names."""
+        return MarkdownStorage(
+            tmp_path,
+            organization="kanban",
+            kanban_dirs={
+                "backlog": "Todo",
+                "in_progress": "Doing",
+                "done": "Completed",
+                "cancelled": "Archived",
+            },
+        )
+
+    def test_new_task_saved_to_backlog(self, kanban_storage, tmp_path):
+        """Test new task is saved to Backlog directory."""
+        task = Task(title="New task")
+        path = kanban_storage.save(task)
+
+        assert path.parent.name == "Backlog"
+        assert path.exists()
+
+    def test_in_progress_task_saved_to_inprogress(self, kanban_storage, tmp_path):
+        """Test in-progress task is saved to InProgress directory."""
+        task = Task(title="Working task")
+        task.start()
+        path = kanban_storage.save(task)
+
+        assert path.parent.name == "InProgress"
+        assert path.exists()
+
+    def test_done_task_saved_to_done(self, kanban_storage, tmp_path):
+        """Test completed task is saved to Done directory."""
+        task = Task(title="Completed task")
+        task.complete()
+        path = kanban_storage.save(task)
+
+        assert path.parent.name == "Done"
+        assert path.exists()
+
+    def test_cancelled_task_saved_to_cancelled(self, kanban_storage, tmp_path):
+        """Test cancelled task is saved to Cancelled directory."""
+        task = Task(title="Cancelled task")
+        task.cancel()
+        path = kanban_storage.save(task)
+
+        assert path.parent.name == "Cancelled"
+        assert path.exists()
+
+    def test_status_change_moves_file(self, kanban_storage, tmp_path):
+        """Test changing status moves file to new directory."""
+        task = Task(title="Moving task")
+        kanban_storage.save(task)
+
+        # Verify in Backlog
+        assert (tmp_path / "Backlog").exists()
+        assert any((tmp_path / "Backlog").glob(f"{task.short_id}_*.md"))
+
+        # Start task - should move to InProgress
+        task.start()
+        kanban_storage.save(task)
+
+        # Verify moved
+        assert not any((tmp_path / "Backlog").glob(f"{task.short_id}_*.md"))
+        assert any((tmp_path / "InProgress").glob(f"{task.short_id}_*.md"))
+
+    def test_custom_directory_names(self, custom_kanban_storage, tmp_path):
+        """Test custom Kanban directory names."""
+        task = Task(title="Custom dirs task")
+        path = custom_kanban_storage.save(task)
+
+        assert path.parent.name == "Todo"
+        assert path.exists()
+
+    def test_list_all_finds_tasks_in_all_dirs(self, kanban_storage, tmp_path):
+        """Test list_all finds tasks across all Kanban directories."""
+        # Create tasks with different statuses
+        task_pending = Task(title="Pending task")
+        kanban_storage.save(task_pending)
+
+        task_progress = Task(title="Progress task")
+        task_progress.start()
+        kanban_storage.save(task_progress)
+
+        task_done = Task(title="Done task")
+        task_done.complete()
+        kanban_storage.save(task_done)
+
+        # List all should find all 3
+        tasks = kanban_storage.list_all()
+        assert len(tasks) == 3
+        titles = {t.title for t in tasks}
+        assert titles == {"Pending task", "Progress task", "Done task"}
+
+    def test_load_finds_task_in_any_dir(self, kanban_storage, tmp_path):
+        """Test load finds task regardless of which directory it's in."""
+        task = Task(title="Findable task")
+        task.start()  # Will be in InProgress
+        kanban_storage.save(task)
+
+        loaded = kanban_storage.load(task.id)
+        assert loaded is not None
+        assert loaded.id == task.id
+
+    def test_flat_mode_no_subdirectories(self, tmp_path):
+        """Test flat mode keeps all tasks in base directory."""
+        storage = MarkdownStorage(tmp_path, organization="flat")
+
+        task = Task(title="Flat task")
+        path = storage.save(task)
+
+        assert path.parent == tmp_path  # Directly in base dir, not subdirectory
+
+    def test_delete_removes_from_correct_dir(self, kanban_storage, tmp_path):
+        """Test delete removes task from its Kanban directory."""
+        task = Task(title="Delete me")
+        task.start()
+        kanban_storage.save(task)
+
+        # Verify exists
+        assert any((tmp_path / "InProgress").glob(f"{task.short_id}_*.md"))
+
+        # Delete
+        result = kanban_storage.delete(task.id)
+        assert result is True
+        assert not any((tmp_path / "InProgress").glob(f"{task.short_id}_*.md"))

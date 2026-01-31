@@ -31,7 +31,9 @@ def start_task(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
 
     try:
         task = manager.start(task_id)
@@ -55,7 +57,9 @@ def done_task(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
 
     try:
         task = manager.complete(task_id, hours)
@@ -86,7 +90,9 @@ def cancel_task(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
 
     try:
         task = manager.cancel(task_id)
@@ -110,7 +116,9 @@ def delete_task(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
 
     try:
         task = manager.get(task_id)
@@ -147,7 +155,9 @@ def add_note(
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
-    manager = TaskManager(storage_dir, format=format)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
 
     try:
         task = manager.add_note(task_id, content)

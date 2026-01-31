@@ -14,14 +14,27 @@ from .recurrence import RecurrenceGenerator
 class TaskManager:
     """Main interface for managing tasks."""
 
-    def __init__(self, storage_dir: Path | None = None, format: str = "frontmatter"):
+    def __init__(
+        self,
+        storage_dir: Path | None = None,
+        format: str = "frontmatter",
+        organization: str = "flat",
+        kanban_dirs: dict[str, str] | None = None,
+    ):
         """Initialize task manager.
 
         Args:
             storage_dir: Directory to store task files
             format: Storage format - "frontmatter" (default) or "hybrid"
+            organization: Organization method - "flat" (default) or "kanban"
+            kanban_dirs: Custom directory names for Kanban mode
         """
-        self.repository = TaskRepository(storage_dir, format=format)
+        self.repository = TaskRepository(
+            storage_dir,
+            format=format,
+            organization=organization,
+            kanban_dirs=kanban_dirs,
+        )
         self.recurrence = RecurrenceGenerator()
 
     def add(

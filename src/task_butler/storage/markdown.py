@@ -39,17 +39,75 @@ class MarkdownStorage:
     # Maximum title length in filename (to avoid path length issues)
     MAX_TITLE_LENGTH = 50
 
-    def __init__(self, base_dir: Path, format: str = "frontmatter"):
+    # Status to Kanban directory key mapping
+    STATUS_TO_KANBAN_KEY = {
+        Status.PENDING: "backlog",
+        Status.IN_PROGRESS: "in_progress",
+        Status.DONE: "done",
+        Status.CANCELLED: "cancelled",
+    }
+
+    def __init__(
+        self,
+        base_dir: Path,
+        format: str = "frontmatter",
+        organization: str = "flat",
+        kanban_dirs: dict[str, str] | None = None,
+    ):
         """Initialize storage with base directory.
 
         Args:
             base_dir: Directory to store task files
             format: Storage format - "frontmatter" (default) or "hybrid"
                    "hybrid" adds Obsidian Tasks line after frontmatter
+            organization: Organization method - "flat" (default) or "kanban"
+                         "kanban" uses status-based subdirectories
+            kanban_dirs: Custom directory names for Kanban mode
         """
         self.base_dir = base_dir
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.format = format
+        self.organization = organization
+        self.kanban_dirs = kanban_dirs or {
+            "backlog": "Backlog",
+            "in_progress": "InProgress",
+            "done": "Done",
+            "cancelled": "Cancelled",
+        }
+
+    def _get_status_dir(self, status: Status) -> Path:
+        """Get directory for a given status.
+
+        Args:
+            status: Task status
+
+        Returns:
+            Directory path for the status (base_dir for flat, subdirectory for kanban)
+        """
+        if self.organization != "kanban":
+            return self.base_dir
+
+        kanban_key = self.STATUS_TO_KANBAN_KEY.get(status, "backlog")
+        subdir_name = self.kanban_dirs.get(kanban_key, "Backlog")
+        subdir = self.base_dir / subdir_name
+        subdir.mkdir(parents=True, exist_ok=True)
+        return subdir
+
+    def _get_all_search_dirs(self) -> list[Path]:
+        """Get all directories to search for tasks.
+
+        Returns:
+            List of directories to search
+        """
+        if self.organization != "kanban":
+            return [self.base_dir]
+
+        dirs = [self.base_dir]  # Include base_dir for migration
+        for dir_name in self.kanban_dirs.values():
+            subdir = self.base_dir / dir_name
+            if subdir.exists():
+                dirs.append(subdir)
+        return dirs
 
     def _sanitize_filename(self, title: str) -> str:
         """Sanitize a title for use in a filename.
@@ -109,7 +167,7 @@ class MarkdownStorage:
     def _find_task_file(self, task_id: str) -> Path:
         """Find a task file by ID.
 
-        Searches for files starting with the task's short ID.
+        Searches for files starting with the task's short ID in all directories.
 
         Args:
             task_id: Full or short task ID
@@ -118,25 +176,32 @@ class MarkdownStorage:
             Path to the task file (may not exist)
         """
         short_id = task_id[:8]
-        # Search for existing file
-        for path in self.base_dir.glob(f"{short_id}_*.md"):
-            return path
-        # Also check for legacy UUID-only format
-        legacy_path = self.base_dir / f"{task_id}.md"
-        if legacy_path.exists():
-            return legacy_path
-        # Return expected path (for new files)
+
+        # Search all directories (for kanban mode, includes all status dirs)
+        for search_dir in self._get_all_search_dirs():
+            for path in search_dir.glob(f"{short_id}_*.md"):
+                return path
+            # Also check for legacy UUID-only format
+            legacy_path = search_dir / f"{task_id}.md"
+            if legacy_path.exists():
+                return legacy_path
+
+        # Return expected path in base_dir (for new files, will be moved on save)
         return self.base_dir / f"{short_id}_task.md"
 
     def save(self, task: Task) -> Path:
         """Save a task to a Markdown file."""
-        # Get the new path based on current title
-        new_path = self._task_path(task.id, task.title)
+        # Get the target directory based on status (for kanban mode)
+        target_dir = self._get_status_dir(task.status)
 
-        # Check if there's an existing file with different name (title changed)
+        # Get the new filename
+        filename = self._task_filename(task.id, task.title)
+        new_path = target_dir / filename
+
+        # Check if there's an existing file (might be in different dir or have different name)
         existing_path = self._find_task_file(task.id)
         if existing_path.exists() and existing_path != new_path:
-            # Delete old file (title changed)
+            # Delete old file (title changed or status changed in kanban mode)
             existing_path.unlink()
 
         path = new_path
@@ -323,10 +388,14 @@ class MarkdownStorage:
     def list_all(self) -> list[Task]:
         """List all tasks in the storage directory."""
         tasks = []
-        for path in self.base_dir.glob("*.md"):
-            task = self.load_from_path(path)
-            if task:
-                tasks.append(task)
+        seen_ids: set[str] = set()
+
+        for search_dir in self._get_all_search_dirs():
+            for path in search_dir.glob("*.md"):
+                task = self.load_from_path(path)
+                if task and task.id not in seen_ids:
+                    tasks.append(task)
+                    seen_ids.add(task.id)
         return tasks
 
     def exists(self, task_id: str) -> bool:

@@ -27,16 +27,29 @@ class AmbiguousTaskIdError(Exception):
 class TaskRepository:
     """Repository for managing tasks with CRUD operations."""
 
-    def __init__(self, storage_dir: Path | None = None, format: str = "frontmatter"):
+    def __init__(
+        self,
+        storage_dir: Path | None = None,
+        format: str = "frontmatter",
+        organization: str = "flat",
+        kanban_dirs: dict[str, str] | None = None,
+    ):
         """Initialize repository with storage directory.
 
         Args:
             storage_dir: Directory to store task files
             format: Storage format - "frontmatter" (default) or "hybrid"
+            organization: Organization method - "flat" (default) or "kanban"
+            kanban_dirs: Custom directory names for Kanban mode
         """
         if storage_dir is None:
             storage_dir = Path.home() / ".task-butler" / "tasks"
-        self.storage = MarkdownStorage(storage_dir, format=format)
+        self.storage = MarkdownStorage(
+            storage_dir,
+            format=format,
+            organization=organization,
+            kanban_dirs=kanban_dirs,
+        )
 
     def create(self, task: Task) -> Task:
         """Create a new task."""

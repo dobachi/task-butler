@@ -241,6 +241,8 @@ title: 会議準備
 format = "hybrid"  # "frontmatter" または "hybrid"
 ```
 
+すべての設定オプションは [`config.sample.toml`](config.sample.toml) を参照してください。
+
 ### カスタムストレージ場所
 
 環境変数で設定：

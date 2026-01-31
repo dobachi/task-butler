@@ -241,6 +241,8 @@ Configuration can be set via (in order of precedence):
 format = "hybrid"  # "frontmatter" or "hybrid"
 ```
 
+See [`config.sample.toml`](config.sample.toml) for all available options.
+
 ### Custom Storage Location
 
 Set via environment variable:

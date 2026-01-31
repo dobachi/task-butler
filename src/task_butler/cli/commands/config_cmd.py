@@ -121,12 +121,25 @@ def config_init() -> None:
         show_default=False,
     )
 
+    # Organization method
+    console.print("\n[cyan]Task Organization Method:[/cyan]")
+    console.print("  1. flat - All tasks in one directory (default)")
+    console.print("  2. kanban - Status-based subdirectories (Backlog, InProgress, Done, Cancelled)")
+    org_choice = typer.prompt(
+        "Choose organization method",
+        default="1",
+        show_choices=False,
+    )
+    organization_method = "kanban" if org_choice == "2" else "flat"
+
     # Apply settings
     config.set_value("storage.format", storage_format)
     if storage_dir != default_dir:
         config.set_value("storage.dir", storage_dir)
     if vault_root:
         config.set_value("obsidian.vault_root", vault_root)
+    if organization_method != "flat":
+        config.set_value("organization.method", organization_method)
     config.save()
 
     console.print("\n[green]✓ Configuration saved![/green]")
@@ -134,4 +147,6 @@ def config_init() -> None:
     console.print(f"  storage.dir = {storage_dir}")
     if vault_root:
         console.print(f"  obsidian.vault_root = {vault_root}")
+    if organization_method != "flat":
+        console.print(f"  organization.method = {organization_method}")
     console.print(f"\nConfig file: {config.CONFIG_PATH}")

@@ -1,0 +1,47 @@
+# Task Butler Configuration Example
+#
+# Location: ~/.task-butler/config.toml
+#
+# Configuration precedence (highest to lowest):
+# 1. CLI options
+# 2. Environment variables (TASK_BUTLER_FORMAT, TASK_BUTLER_DIR)
+# 3. This config file
+# 4. Default values
+
+# ============================================
+# Storage Settings
+# ============================================
+[storage]
+# Storage format: "frontmatter" or "hybrid"
+# - frontmatter: YAML frontmatter only (default)
+# - hybrid: YAML frontmatter + Obsidian Tasks line
+format = "frontmatter"
+
+# Task storage directory (default: ~/.task-butler/tasks)
+# dir = "/path/to/your/tasks"
+
+# ============================================
+# Obsidian Integration
+# ============================================
+[obsidian]
+# Obsidian vault root (for linking support)
+# vault_root = "/path/to/your/vault"
+
+# ============================================
+# Task Organization
+# ============================================
+# [organization]
+# # Organization method: "flat" or "kanban"
+# # - flat: All tasks in one directory (default)
+# # - kanban: Status-based subdirectories
+# method = "kanban"
+#
+# # Custom directory names for Kanban mode (optional)
+# [organization.kanban]
+# backlog = "Backlog"        # pending tasks
+# in_progress = "InProgress" # tasks being worked on
+# done = "Done"              # completed tasks
+# cancelled = "Cancelled"    # cancelled tasks
+#
+# # After enabling kanban, run: task-butler organize
+# # to move existing tasks to their status directories
