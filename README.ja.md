@@ -343,6 +343,7 @@ task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md
 ```bash
 task-butler obsidian export    # Obsidian形式でエクスポート
 task-butler obsidian import    # Obsidianファイルからインポート
+task-butler obsidian import --link  # インポート＋ソース行をリンクに置換
 task-butler obsidian check     # フロントマターとの差分を検知
 task-butler obsidian resolve   # 差分を解決
 task-butler obsidian format    # 単一タスクをObsidian形式で表示

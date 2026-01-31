@@ -343,6 +343,7 @@ task-butler obsidian import ~/Documents/MyVault/daily/2025-01-25.md
 ```bash
 task-butler obsidian export    # Export in Obsidian format
 task-butler obsidian import    # Import from Obsidian file
+task-butler obsidian import --link  # Import + replace source lines with links
 task-butler obsidian check     # Detect conflicts with frontmatter
 task-butler obsidian resolve   # Resolve conflicts
 task-butler obsidian format    # Display single task in Obsidian format
