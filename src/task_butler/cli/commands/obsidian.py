@@ -166,13 +166,19 @@ def export_tasks(
         console.print(output_text)
 
 
-def _collect_files(path: Path, recursive: bool, pattern: str) -> list[Path]:
+def _collect_files(
+    path: Path,
+    recursive: bool,
+    pattern: str,
+    exclude_dir: Path | None = None,
+) -> list[Path]:
     """Collect markdown files from a path.
 
     Args:
         path: File or directory path
         recursive: Include subdirectories
         pattern: Glob pattern for file matching
+        exclude_dir: Directory to exclude from collection
 
     Returns:
         List of file paths to process
@@ -185,7 +191,17 @@ def _collect_files(path: Path, recursive: bool, pattern: str) -> list[Path]:
     else:
         files = list(path.glob(pattern))
 
-    return sorted([f for f in files if f.is_file()])
+    result = [f for f in files if f.is_file()]
+
+    # Exclude storage directory if provided
+    if exclude_dir and exclude_dir.exists():
+        exclude_dir_resolved = exclude_dir.resolve()
+        result = [
+            f for f in result
+            if not f.resolve().is_relative_to(exclude_dir_resolved)
+        ]
+
+    return sorted(result)
 
 
 def _prompt_duplicate_action(existing_task: Task, parsed: ParsedObsidianTask) -> str:
@@ -535,8 +551,16 @@ def import_tasks(
             console.print(f"[dim]Vault root: {vault_root}[/dim]")
             console.print(f"[dim]Storage: {storage_dir}[/dim]")
 
-    # Collect files to process
-    files = _collect_files(path, recursive, pattern)
+    # Collect files to process, excluding storage directory
+    files = _collect_files(path, recursive, pattern, exclude_dir=storage_dir)
+
+    # Show message if storage directory is being excluded
+    if storage_dir.exists() and path.is_dir() and recursive:
+        try:
+            storage_dir.resolve().relative_to(path.resolve())
+            console.print(f"[dim](excluding storage directory: {storage_dir})[/dim]")
+        except ValueError:
+            pass  # storage_dir is not under import path
 
     if not files:
         console.print(f"[yellow]No files found matching pattern '{pattern}' in {path}[/yellow]")

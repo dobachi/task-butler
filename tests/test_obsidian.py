@@ -398,6 +398,152 @@ class TestDirectoryImport:
         assert len(files) == 2
 
 
+class TestImportExcludeStorageDir:
+    """Tests for excluding storage directory during import."""
+
+    def test_recursive_import_excludes_storage_dir(self, tmp_path):
+        """Test that recursive import excludes the storage directory."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        # Setup: Vault with storage dir inside
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+
+        storage = vault / "Tasks"
+        storage.mkdir()
+
+        # Create a task file in storage (should be excluded)
+        (storage / "abc12345_Existing.md").write_text(
+            "---\nid: abc12345\ntitle: Existing\nstatus: pending\n---\n"
+            "- [ ] Existing\n"
+        )
+
+        # Create a note with task (should be imported)
+        (vault / "notes.md").write_text("- [ ] New task 📅 2026-02-01\n")
+
+        # Import with exclude_dir
+        files = _collect_files(vault, recursive=True, pattern="*.md", exclude_dir=storage)
+
+        # Assert: Only notes.md is collected
+        assert len(files) == 1
+        assert files[0].name == "notes.md"
+
+    def test_recursive_import_without_exclude_dir(self, tmp_path):
+        """Test that recursive import includes storage dir when exclude_dir is None."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        # Setup: Vault with storage dir inside
+        vault = tmp_path / "vault"
+        vault.mkdir()
+
+        storage = vault / "Tasks"
+        storage.mkdir()
+
+        # Create files
+        (storage / "task.md").write_text("- [ ] Task in storage")
+        (vault / "notes.md").write_text("- [ ] Notes")
+
+        # Import without exclude_dir
+        files = _collect_files(vault, recursive=True, pattern="*.md", exclude_dir=None)
+
+        # Assert: Both files are collected
+        assert len(files) == 2
+        names = {f.name for f in files}
+        assert "notes.md" in names
+        assert "task.md" in names
+
+    def test_exclude_dir_nested_files(self, tmp_path):
+        """Test that nested files in storage directory are also excluded."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        # Setup: Vault with nested storage structure
+        vault = tmp_path / "vault"
+        vault.mkdir()
+
+        storage = vault / "Tasks"
+        storage.mkdir()
+        nested = storage / "archive"
+        nested.mkdir()
+
+        # Create files at various levels
+        (storage / "task1.md").write_text("- [ ] Task 1")
+        (nested / "archived.md").write_text("- [ ] Archived")
+        (vault / "notes.md").write_text("- [ ] Notes")
+        (vault / "daily" ).mkdir()
+        (vault / "daily" / "2025-01-01.md").write_text("- [ ] Daily note")
+
+        # Import with exclude_dir
+        files = _collect_files(vault, recursive=True, pattern="*.md", exclude_dir=storage)
+
+        # Assert: Only files outside storage are collected
+        assert len(files) == 2
+        names = {f.name for f in files}
+        assert "notes.md" in names
+        assert "2025-01-01.md" in names
+        assert "task1.md" not in names
+        assert "archived.md" not in names
+
+    def test_exclude_dir_not_under_path(self, tmp_path):
+        """Test that exclude_dir has no effect when not under the import path."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        # Setup: Two separate directories
+        import_path = tmp_path / "import"
+        import_path.mkdir()
+        storage = tmp_path / "storage"
+        storage.mkdir()
+
+        # Create files
+        (import_path / "notes.md").write_text("- [ ] Notes")
+        (storage / "task.md").write_text("- [ ] Task")
+
+        # Import with exclude_dir pointing to separate directory
+        files = _collect_files(import_path, recursive=True, pattern="*.md", exclude_dir=storage)
+
+        # Assert: Import path files are collected (storage is separate anyway)
+        assert len(files) == 1
+        assert files[0].name == "notes.md"
+
+    def test_exclude_dir_single_file_import(self, tmp_path):
+        """Test that exclude_dir has no effect when importing a single file."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        # Setup
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        storage = vault / "Tasks"
+        storage.mkdir()
+
+        file = vault / "notes.md"
+        file.write_text("- [ ] Notes")
+
+        # Import single file with exclude_dir (should have no effect)
+        files = _collect_files(file, recursive=False, pattern="*.md", exclude_dir=storage)
+
+        # Assert: Single file is returned
+        assert len(files) == 1
+        assert files[0] == file
+
+    def test_exclude_nonexistent_dir(self, tmp_path):
+        """Test that nonexistent exclude_dir is safely ignored."""
+        from task_butler.cli.commands.obsidian import _collect_files
+
+        # Setup
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / "notes.md").write_text("- [ ] Notes")
+        (vault / "other.md").write_text("- [ ] Other")
+
+        nonexistent_storage = vault / "NonExistent"  # Does not exist
+
+        # Import with nonexistent exclude_dir
+        files = _collect_files(vault, recursive=True, pattern="*.md", exclude_dir=nonexistent_storage)
+
+        # Assert: All files are collected (nonexistent dir is ignored)
+        assert len(files) == 2
+
+
 class TestVaultRootDetection:
     """Tests for Obsidian vault root detection."""
 
