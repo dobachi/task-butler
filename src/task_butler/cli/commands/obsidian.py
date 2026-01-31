@@ -60,6 +60,8 @@ def generate_wiki_link(
     storage_dir: Path,
     vault_root: Path,
     link_format: LinkFormat = LinkFormat.WIKI,
+    organization: str = "flat",
+    kanban_dirs: dict[str, str] | None = None,
 ) -> str:
     """Generate an Obsidian wiki link for a task.
 
@@ -68,18 +70,24 @@ def generate_wiki_link(
         storage_dir: Path to the task storage directory.
         vault_root: Path to the Obsidian vault root.
         link_format: Wiki link format (wiki or embed).
+        organization: Organization method ("flat" or "kanban").
+        kanban_dirs: Custom directory names for Kanban mode.
 
     Returns:
         Obsidian wiki link string.
     """
     from ...storage.markdown import MarkdownStorage
 
-    # Generate the task filename
-    storage = MarkdownStorage(storage_dir)
+    # Generate the task filename with proper organization settings
+    storage = MarkdownStorage(
+        storage_dir, organization=organization, kanban_dirs=kanban_dirs
+    )
     filename = storage._task_filename(task.id, task.title)
 
-    # Calculate relative path from vault root
-    task_file_path = storage_dir / filename
+    # Get the correct directory based on task status (for kanban mode)
+    status_dir = storage._get_status_dir(task.status)
+    task_file_path = status_dir / filename
+
     try:
         relative_path = task_file_path.relative_to(vault_root)
         # Remove .md extension for Obsidian links
@@ -415,6 +423,8 @@ def _replace_lines_with_links(
     storage_dir: Path,
     vault_root: Path,
     link_format: LinkFormat,
+    organization: str = "flat",
+    kanban_dirs: dict[str, str] | None = None,
 ) -> None:
     """Replace task lines in a file with wiki links.
 
@@ -424,6 +434,8 @@ def _replace_lines_with_links(
         storage_dir: Path to task storage directory
         vault_root: Path to vault root
         link_format: Link format (wiki or embed)
+        organization: Organization method ("flat" or "kanban")
+        kanban_dirs: Custom directory names for Kanban mode
     """
     content = file.read_text(encoding="utf-8")
     lines = content.split("\n")
@@ -436,7 +448,9 @@ def _replace_lines_with_links(
         line_idx = info.line_number - 1  # Convert to 0-indexed
         if 0 <= line_idx < len(lines):
             # Generate wiki link
-            link = generate_wiki_link(info.task, storage_dir, vault_root, link_format)
+            link = generate_wiki_link(
+                info.task, storage_dir, vault_root, link_format, organization, kanban_dirs
+            )
             # Preserve leading whitespace from original line
             original = info.original_line
             leading_whitespace = original[: len(original) - len(original.lstrip())]
@@ -630,7 +644,9 @@ def import_tasks(
     # Replace source lines with links if requested
     if link and total_task_infos and not dry_run:
         for file, task_infos in total_task_infos.items():
-            _replace_lines_with_links(file, task_infos, storage_dir, vault_root, link_format)
+            _replace_lines_with_links(
+                file, task_infos, storage_dir, vault_root, link_format, organization, kanban_dirs
+            )
         console.print(
             f"[green]✓[/green] Replaced {sum(len(t) for t in total_task_infos.values())} "
             f"task line(s) with links"
@@ -1027,5 +1043,151 @@ def fix_created(
     else:
         action = "Would fix" if dry_run else "Fixed"
         console.print(f"[bold]{action} {fixed_count} task(s)[/bold]")
+        if error_count > 0:
+            console.print(f"[yellow]Errors: {error_count}[/yellow]")
+
+
+@obsidian_app.command(name="fix-links")
+def fix_links(
+    ctx: typer.Context,
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Show what would be changed without making changes"
+    ),
+    vault_root_opt: Optional[Path] = typer.Option(
+        None,
+        "--vault-root",
+        "-v",
+        help="Obsidian vault root (auto-detected if not specified)",
+    ),
+    link_format_opt: str = typer.Option(
+        "wiki",
+        "--link-format",
+        help="Link format: 'wiki' ([[path|title]]) or 'embed' (![[path|title]])",
+    ),
+) -> None:
+    """Fix wiki links in source files for imported tasks.
+
+    Regenerates wiki links with correct paths (e.g., for Kanban subdirectories)
+    and updates the source files.
+
+    This is useful to fix links that were created before Kanban support was added.
+
+    Examples:
+        # Preview changes
+        task-butler obsidian fix-links --dry-run
+
+        # Apply fixes
+        task-butler obsidian fix-links
+    """
+    from ...config import get_config
+
+    config = get_config()
+    storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)
+    storage_format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
+    organization = config.get_organization_method()
+    kanban_dirs = config.get_kanban_dirs()
+    manager = TaskManager(
+        storage_dir, format=storage_format, organization=organization, kanban_dirs=kanban_dirs
+    )
+
+    # Parse link format
+    try:
+        link_format = LinkFormat(link_format_opt.lower())
+    except ValueError:
+        console.print(f"[red]Error:[/red] Invalid link format: {link_format_opt}")
+        console.print("Use 'wiki' or 'embed'")
+        raise typer.Exit(1)
+
+    # Find vault root
+    vault_root = config.get_vault_root(vault_root_opt)
+    if vault_root is None:
+        vault_root = find_vault_root(storage_dir)
+
+    if vault_root is None:
+        console.print("[red]Error:[/red] Could not find Obsidian vault root (.obsidian directory)")
+        console.print("[dim]Specify with --vault-root or set obsidian.vault_root in config[/dim]")
+        raise typer.Exit(1)
+
+    # Get all tasks with source_file
+    all_tasks = manager.list(include_done=True)
+    imported_tasks = [t for t in all_tasks if t.source_file]
+
+    if not imported_tasks:
+        console.print("[dim]No imported tasks found (no tasks with source_file)[/dim]")
+        return
+
+    console.print(f"[bold]Checking {len(imported_tasks)} imported task(s)...[/bold]")
+    if dry_run:
+        console.print("[dim](dry run mode)[/dim]")
+
+    fixed_count = 0
+    error_count = 0
+
+    # Group tasks by source file
+    tasks_by_file: dict[str, list[Task]] = {}
+    for task in imported_tasks:
+        if task.source_file not in tasks_by_file:
+            tasks_by_file[task.source_file] = []
+        tasks_by_file[task.source_file].append(task)
+
+    for source_file_rel, tasks in tasks_by_file.items():
+        source_path = vault_root / source_file_rel
+        if not source_path.exists():
+            console.print(f"[yellow]⚠[/yellow] Source file not found: {source_file_rel}")
+            error_count += len(tasks)
+            continue
+
+        try:
+            content = source_path.read_text(encoding="utf-8")
+            lines = content.split("\n")
+            modified = False
+
+            for task in tasks:
+                # Generate correct link
+                correct_link = generate_wiki_link(
+                    task, storage_dir, vault_root, link_format, organization, kanban_dirs
+                )
+
+                # Find line with wiki link to this task
+                for i, line in enumerate(lines):
+                    # Check if this line contains a wiki link to this task
+                    # Link format: - [[path|title]] or - ![[path|title]]
+                    if f"|{task.title}]]" in line and line.strip().startswith("- "):
+                        # Extract existing link
+                        import re
+                        link_match = re.search(r"(!?\[\[[^\]]+\]\])", line)
+                        if link_match:
+                            existing_link = link_match.group(1)
+                            if existing_link != correct_link:
+                                if dry_run:
+                                    console.print(
+                                        f"  [blue]FIX[/blue] {task.short_id}: {task.title}"
+                                    )
+                                    console.print(f"    [dim]Old: {existing_link}[/dim]")
+                                    console.print(f"    [dim]New: {correct_link}[/dim]")
+                                else:
+                                    # Replace the link
+                                    lines[i] = line.replace(existing_link, correct_link)
+                                    modified = True
+                                    console.print(
+                                        f"  [green]✓[/green] {task.short_id}: {task.title}"
+                                    )
+                                fixed_count += 1
+                        break
+
+            if modified and not dry_run:
+                source_path.write_text("\n".join(lines), encoding="utf-8")
+
+        except Exception as e:
+            console.print(f"[red]✗[/red] Error processing {source_file_rel}: {e}")
+            error_count += 1
+
+    # Summary
+    console.print()
+    if fixed_count == 0 and error_count == 0:
+        console.print("[green]✓[/green] All links are already correct")
+    else:
+        action = "Would fix" if dry_run else "Fixed"
+        console.print(f"[bold]{action} {fixed_count} link(s)[/bold]")
         if error_count > 0:
             console.print(f"[yellow]Errors: {error_count}[/yellow]")

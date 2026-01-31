@@ -677,6 +677,49 @@ class TestWikiLinkGeneration:
         # Should use absolute path (won't work in Obsidian but shouldn't crash)
         assert "My Task" in link
 
+    def test_generate_wiki_link_kanban_mode(self, tmp_path):
+        """Test generating link with Kanban organization mode."""
+        from task_butler.cli.commands.obsidian import (
+            LinkFormat,
+            generate_wiki_link,
+        )
+        from task_butler.models.enums import Status
+
+        vault = tmp_path / "vault"
+        vault.mkdir()
+        (vault / ".obsidian").mkdir()
+        storage = vault / "Tasks"
+        storage.mkdir()
+
+        # Test PENDING status -> Backlog directory
+        task_pending = Task(
+            id="11111111-aaaa-1111-aaaa-111111111111",
+            title="Pending Task",
+            status=Status.PENDING,
+        )
+        link_pending = generate_wiki_link(
+            task_pending, storage, vault, LinkFormat.WIKI, organization="kanban"
+        )
+        assert link_pending == "[[Tasks/Backlog/11111111_Pending_Task|Pending Task]]"
+
+        # Test DONE status -> Done directory
+        task_done = Task(
+            id="22222222-bbbb-2222-bbbb-222222222222",
+            title="Done Task",
+            status=Status.DONE,
+        )
+        link_done = generate_wiki_link(
+            task_done, storage, vault, LinkFormat.WIKI, organization="kanban"
+        )
+        assert link_done == "[[Tasks/Done/22222222_Done_Task|Done Task]]"
+
+        # Test with custom kanban dirs
+        custom_dirs = {"backlog": "Todo", "done": "Completed"}
+        link_custom = generate_wiki_link(
+            task_pending, storage, vault, LinkFormat.WIKI, organization="kanban", kanban_dirs=custom_dirs
+        )
+        assert link_custom == "[[Tasks/Todo/11111111_Pending_Task|Pending Task]]"
+
 
 class TestImportDuplicateHandling:
     """Tests for import duplicate handling."""
