@@ -1,5 +1,5 @@
 [project]
-name = "task-butler"
+name = "markdown-task-butler"
 version = "0.2.0"
 description = "A task management tool that helps prioritize and recommend actions - your digital butler for tasks"
 readme = "README.md"
