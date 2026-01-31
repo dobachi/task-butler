@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
 
 from ...core.task_manager import TaskManager
 from ...storage import AmbiguousTaskIdError
+from ..completion import complete_open_task_id, complete_task_id
 
 console = Console()
 
@@ -23,7 +24,10 @@ def _handle_ambiguous_id(e: AmbiguousTaskIdError) -> None:
 
 def start_task(
     ctx: typer.Context,
-    task_id: str = typer.Argument(..., help="Task ID (full or short)"),
+    task_id: Annotated[
+        str,
+        typer.Argument(..., help="Task ID (full or short)", autocompletion=complete_open_task_id),
+    ],
 ) -> None:
     """Start working on a task."""
     from ...config import get_config
@@ -48,7 +52,10 @@ def start_task(
 
 def done_task(
     ctx: typer.Context,
-    task_id: str = typer.Argument(..., help="Task ID (full or short)"),
+    task_id: Annotated[
+        str,
+        typer.Argument(..., help="Task ID (full or short)", autocompletion=complete_open_task_id),
+    ],
     hours: Optional[float] = typer.Option(None, "--hours", "-h", help="Actual hours spent"),
 ) -> None:
     """Mark a task as done."""
@@ -82,7 +89,10 @@ def done_task(
 
 def cancel_task(
     ctx: typer.Context,
-    task_id: str = typer.Argument(..., help="Task ID (full or short)"),
+    task_id: Annotated[
+        str,
+        typer.Argument(..., help="Task ID (full or short)", autocompletion=complete_open_task_id),
+    ],
 ) -> None:
     """Cancel a task."""
     from ...config import get_config
@@ -107,7 +117,10 @@ def cancel_task(
 
 def delete_task(
     ctx: typer.Context,
-    task_id: str = typer.Argument(..., help="Task ID (full or short)"),
+    task_id: Annotated[
+        str,
+        typer.Argument(..., help="Task ID (full or short)", autocompletion=complete_task_id),
+    ],
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
 ) -> None:
     """Delete a task permanently."""
@@ -146,7 +159,10 @@ def delete_task(
 
 def add_note(
     ctx: typer.Context,
-    task_id: str = typer.Argument(..., help="Task ID (full or short)"),
+    task_id: Annotated[
+        str,
+        typer.Argument(..., help="Task ID (full or short)", autocompletion=complete_task_id),
+    ],
     content: str = typer.Argument(..., help="Note content"),
 ) -> None:
     """Add a note to a task."""

@@ -207,8 +207,6 @@ def organize(
         if current_path.parent != storage_dir:
             continue
 
-        target_path = storage_dir / target_dir / current_path.name
-
         if dry_run:
             console.print(f"[dim]Would move:[/dim] {current_path.name} → {target_dir}/")
         else:

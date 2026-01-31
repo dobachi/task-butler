@@ -66,6 +66,50 @@ task-butler done abc1
 
 ショートIDが複数のタスクにマッチする場合、マッチするタスクの一覧が表示されます。
 
+## シェル補完
+
+Task Butlerはコマンド、オプション、タスクIDのシェル補完をサポートしています。
+
+### インストール
+
+```bash
+# Bash
+task-butler --install-completion bash
+
+# Zsh
+task-butler --install-completion zsh
+
+# Fish
+task-butler --install-completion fish
+```
+
+インストール後、シェルを再起動するか設定ファイルを再読み込みしてください。
+
+### 機能
+
+- **コマンド補完**: Tabでコマンド名を補完（`task-butler st<TAB>` -> `start`）
+- **オプション補完**: Tabでオプション名を補完（`--pri<TAB>` -> `--priority`）
+- **タスクID補完**: TabでマッチするタスクIDとタイトルを表示
+  - オープンコマンド（`start`、`done`、`cancel`）はpending/in_progressのタスクのみ表示
+  - その他のコマンド（`show`、`delete`、`note`）は全タスクを表示
+- **プロジェクト名補完**: `--project`オプションで利用可能
+- **タグ名補完**: `--tag`オプションで利用可能
+
+### 使用例
+
+```bash
+# タスクを追加
+task-butler add "タスク1"
+task-butler add "タスク2"
+
+# タスクIDを補完
+task-butler show <TAB>
+# 表示: abc12345 (タスク1)  def67890 (タスク2)
+
+task-butler start <TAB>
+# ステータスインジケータ付きでオープンタスクのみ表示
+```
+
 ## コマンド
 
 ### タスクの追加

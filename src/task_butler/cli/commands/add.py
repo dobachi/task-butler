@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
@@ -12,6 +12,7 @@ from rich.console import Console
 from ...core.task_manager import TaskManager
 from ...models.enums import Frequency, Priority
 from ...models.task import RecurrenceRule
+from ..completion import complete_task_id
 
 console = Console()
 
@@ -97,10 +98,14 @@ def add_task(
     ),
     tags: Optional[str] = typer.Option(None, "--tags", "-t", help="Comma-separated tags"),
     project: Optional[str] = typer.Option(None, "--project", "-P", help="Project name"),
-    parent: Optional[str] = typer.Option(None, "--parent", help="Parent task ID"),
-    depends: Optional[str] = typer.Option(
-        None, "--depends", help="Comma-separated dependency task IDs"
-    ),
+    parent: Annotated[
+        Optional[str],
+        typer.Option("--parent", help="Parent task ID", autocompletion=complete_task_id),
+    ] = None,
+    depends: Annotated[
+        Optional[str],
+        typer.Option("--depends", help="Comma-separated dependency task IDs", autocompletion=complete_task_id),
+    ] = None,
     hours: Optional[float] = typer.Option(None, "--hours", "-h", help="Estimated hours"),
     recur: Optional[str] = typer.Option(
         None, "--recur", "-r", help="Recurrence (daily, weekly, monthly, yearly, or 'every N days')"

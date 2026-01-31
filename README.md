@@ -66,6 +66,50 @@ task-butler done abc1
 
 If a short ID matches multiple tasks, you'll see a list of matching tasks to choose from.
 
+## Shell Completion
+
+Task Butler supports shell completion for commands, options, and task IDs.
+
+### Installation
+
+```bash
+# Bash
+task-butler --install-completion bash
+
+# Zsh
+task-butler --install-completion zsh
+
+# Fish
+task-butler --install-completion fish
+```
+
+After installation, restart your shell or source the config file.
+
+### Features
+
+- **Command completion**: Tab to complete command names (`task-butler st<TAB>` -> `start`)
+- **Option completion**: Tab to complete option names (`--pri<TAB>` -> `--priority`)
+- **Task ID completion**: Tab to see matching task IDs with titles
+  - Open commands (`start`, `done`, `cancel`) show only pending/in_progress tasks
+  - Other commands (`show`, `delete`, `note`) show all tasks
+- **Project name completion**: Available for `--project` option
+- **Tag name completion**: Available for `--tag` option
+
+### Example
+
+```bash
+# Add some tasks
+task-butler add "Task 1"
+task-butler add "Task 2"
+
+# Complete task ID
+task-butler show <TAB>
+# Shows: abc12345 (Task 1)  def67890 (Task 2)
+
+task-butler start <TAB>
+# Shows only open tasks with status indicator
+```
+
 ## Commands
 
 ### Adding Tasks
