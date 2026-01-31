@@ -158,7 +158,9 @@ class Config:
             self._file_config[section] = {}
         self._file_config[section][name] = value
 
-    def _validate_and_set_3level(self, section: str, subsection: str, name: str, value: str) -> None:
+    def _validate_and_set_3level(
+        self, section: str, subsection: str, name: str, value: str
+    ) -> None:
         """Validate and set a 3-level config key."""
         if section == "organization" and subsection == "kanban":
             if name in ("backlog", "in_progress", "done", "cancelled"):

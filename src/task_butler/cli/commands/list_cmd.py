@@ -86,7 +86,9 @@ def list_tasks(
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
     organization = config.get_organization_method()
     kanban_dirs = config.get_kanban_dirs()
-    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
+    manager = TaskManager(
+        storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs
+    )
 
     if tree:
         _list_tree(manager, all)

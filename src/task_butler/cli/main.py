@@ -79,7 +79,9 @@ def projects(ctx: typer.Context) -> None:
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
     organization = config.get_organization_method()
     kanban_dirs = config.get_kanban_dirs()
-    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
+    manager = TaskManager(
+        storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs
+    )
     project_list = manager.get_projects()
 
     if not project_list:
@@ -102,7 +104,9 @@ def tags(ctx: typer.Context) -> None:
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
     organization = config.get_organization_method()
     kanban_dirs = config.get_kanban_dirs()
-    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
+    manager = TaskManager(
+        storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs
+    )
     tag_list = manager.get_tags()
 
     if not tag_list:
@@ -129,7 +133,9 @@ def search(
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
     organization = config.get_organization_method()
     kanban_dirs = config.get_kanban_dirs()
-    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
+    manager = TaskManager(
+        storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs
+    )
     tasks = manager.search(query)
 
     if not tasks:
@@ -144,7 +150,9 @@ def search(
 @app.command()
 def organize(
     ctx: typer.Context,
-    dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Preview changes without moving files"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-n", help="Preview changes without moving files"
+    ),
 ) -> None:
     """Organize existing tasks into Kanban directories.
 
@@ -219,7 +227,9 @@ def organize(
     if moved_count == 0:
         console.print("[dim]All tasks are already organized[/dim]")
     elif dry_run:
-        console.print(f"\n[bold]{moved_count}[/bold] task(s) would be moved. Run without --dry-run to apply.")
+        console.print(
+            f"\n[bold]{moved_count}[/bold] task(s) would be moved. Run without --dry-run to apply."
+        )
     else:
         console.print(f"\n[bold]{moved_count}[/bold] task(s) organized.")
 

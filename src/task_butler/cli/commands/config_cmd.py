@@ -124,7 +124,9 @@ def config_init() -> None:
     # Organization method
     console.print("\n[cyan]Task Organization Method:[/cyan]")
     console.print("  1. flat - All tasks in one directory (default)")
-    console.print("  2. kanban - Status-based subdirectories (Backlog, InProgress, Done, Cancelled)")
+    console.print(
+        "  2. kanban - Status-based subdirectories (Backlog, InProgress, Done, Cancelled)"
+    )
     org_choice = typer.prompt(
         "Choose organization method",
         default="1",

@@ -104,7 +104,9 @@ def add_task(
     ] = None,
     depends: Annotated[
         Optional[str],
-        typer.Option("--depends", help="Comma-separated dependency task IDs", autocompletion=complete_task_id),
+        typer.Option(
+            "--depends", help="Comma-separated dependency task IDs", autocompletion=complete_task_id
+        ),
     ] = None,
     hours: Optional[float] = typer.Option(None, "--hours", "-h", help="Estimated hours"),
     recur: Optional[str] = typer.Option(
@@ -119,7 +121,9 @@ def add_task(
     format = config.get_format(ctx.obj.get("format") if ctx.obj else None)
     organization = config.get_organization_method()
     kanban_dirs = config.get_kanban_dirs()
-    manager = TaskManager(storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs)
+    manager = TaskManager(
+        storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs
+    )
 
     try:
         # Parse optional fields
