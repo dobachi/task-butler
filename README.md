@@ -377,10 +377,15 @@ uv run pytest --cov=task_butler
   - Export (JSON, CSV)
   - Interactive chat mode
 
-- [ ] **Phase 5**: Distribution
-  - PyPI publication (`pip install task-butler`, `uvx task-butler`)
-  - Standalone executables
+- [x] **Phase 5**: Distribution
+  - PyPI publication (`pip install markdown-task-butler`)
+  - Shell completion (Bash/Zsh/Fish)
   - Extended documentation
+
+- [ ] **Phase 6**: Windows Support
+  - Windows compatibility testing
+  - PowerShell completion
+  - Windows installer / standalone executable
 
 ## Obsidian Integration
 
