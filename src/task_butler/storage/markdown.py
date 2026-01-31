@@ -12,6 +12,25 @@ from ..models.enums import Frequency, Priority, Status
 from ..models.task import Note, RecurrenceRule, Task
 
 
+def _parse_datetime(value: str | datetime | None) -> datetime | None:
+    """Parse a datetime value that may already be a datetime object.
+
+    The frontmatter library may auto-convert date strings to datetime objects,
+    so this function handles both cases.
+
+    Args:
+        value: A datetime object, ISO format string, or None
+
+    Returns:
+        Parsed datetime or None
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(value)
+
+
 class MarkdownStorage:
     """Read and write tasks as Markdown files with YAML frontmatter."""
 
@@ -264,18 +283,10 @@ class MarkdownStorage:
             description=description,
             status=Status(metadata["status"]),
             priority=Priority(metadata["priority"]),
-            due_date=datetime.fromisoformat(metadata["due_date"])
-            if metadata.get("due_date")
-            else None,
-            scheduled_date=datetime.fromisoformat(metadata["scheduled_date"])
-            if metadata.get("scheduled_date")
-            else None,
-            start_date=datetime.fromisoformat(metadata["start_date"])
-            if metadata.get("start_date")
-            else None,
-            completed_at=datetime.fromisoformat(metadata["completed_at"])
-            if metadata.get("completed_at")
-            else None,
+            due_date=_parse_datetime(metadata.get("due_date")),
+            scheduled_date=_parse_datetime(metadata.get("scheduled_date")),
+            start_date=_parse_datetime(metadata.get("start_date")),
+            completed_at=_parse_datetime(metadata.get("completed_at")),
             estimated_hours=metadata.get("estimated_hours"),
             actual_hours=metadata.get("actual_hours"),
             tags=metadata.get("tags", []),
@@ -284,8 +295,8 @@ class MarkdownStorage:
             dependencies=metadata.get("dependencies", []),
             recurrence=recurrence,
             recurrence_parent_id=metadata.get("recurrence_parent_id"),
-            created_at=datetime.fromisoformat(metadata["created_at"]),
-            updated_at=datetime.fromisoformat(metadata["updated_at"]),
+            created_at=_parse_datetime(metadata["created_at"]),
+            updated_at=_parse_datetime(metadata["updated_at"]),
             notes=notes,
             source_file=metadata.get("source_file"),
             source_line=metadata.get("source_line"),
