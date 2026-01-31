@@ -278,8 +278,8 @@ class TestConfigCommand:
     @pytest.fixture
     def config_setup(self, tmp_path, monkeypatch):
         """Setup config with temporary directory."""
-        from task_butler.config import Config
         import task_butler.config
+        from task_butler.config import Config
 
         config_dir = tmp_path / ".task-butler"
         config_dir.mkdir(parents=True, exist_ok=True)
