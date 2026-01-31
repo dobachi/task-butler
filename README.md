@@ -17,11 +17,21 @@ Your digital butler for task management. A CLI tool that helps you manage tasks,
 
 ## Installation
 
-### Using uvx from GitHub (Recommended)
+### Using uv tool (Recommended)
+
+```bash
+uv tool install git+https://github.com/dobachi/task-butler.git
+```
+
+This installs `task-butler` and `tb` commands globally, with shell completion support.
+
+### Quick Try with uvx
 
 ```bash
 uvx --from git+https://github.com/dobachi/task-butler.git task-butler
 ```
+
+Note: `uvx` runs in a temporary environment. Shell completion is not available.
 
 ### From Source
 
@@ -70,16 +80,7 @@ If a short ID matches multiple tasks, you'll see a list of matching tasks to cho
 
 Task Butler supports shell completion for commands, options, and task IDs.
 
-### Prerequisites
-
-Shell completion requires a persistent installation. **`uvx` (temporary execution) does not support completion.**
-
-```bash
-# Install as a tool (required for completion)
-uv tool install git+https://github.com/dobachi/task-butler.git
-```
-
-### Installation
+### Setup
 
 ```bash
 # Zsh (recommended - shows task titles)

@@ -17,11 +17,21 @@
 
 ## インストール
 
-### GitHubからuvxを使用（推奨）
+### uv toolを使用（推奨）
+
+```bash
+uv tool install git+https://github.com/dobachi/task-butler.git
+```
+
+`task-butler`と`tb`コマンドがグローバルにインストールされ、シェル補完も利用可能になります。
+
+### uvxで試す
 
 ```bash
 uvx --from git+https://github.com/dobachi/task-butler.git task-butler
 ```
+
+注: `uvx`は一時的な環境で実行されます。シェル補完は利用できません。
 
 ### ソースから
 
@@ -70,16 +80,7 @@ task-butler done abc1
 
 Task Butlerはコマンド、オプション、タスクIDのシェル補完をサポートしています。
 
-### 前提条件
-
-シェル補完には永続的なインストールが必要です。**`uvx`（一時実行）では補完は機能しません。**
-
-```bash
-# ツールとしてインストール（補完に必要）
-uv tool install git+https://github.com/dobachi/task-butler.git
-```
-
-### インストール
+### セットアップ
 
 ```bash
 # Zsh（推奨 - タスクタイトル表示）
