@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 
 from .commands import add, list_cmd, show, status
+from .commands.config_cmd import config_app
 from .commands.obsidian import obsidian_app
 
 app = typer.Typer(
@@ -31,6 +32,7 @@ app.command(name="delete")(status.delete_task)
 app.command(name="note")(status.add_note)
 
 # Register sub-apps
+app.add_typer(config_app, name="config")
 app.add_typer(obsidian_app, name="obsidian")
 
 

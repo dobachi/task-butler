@@ -110,6 +110,90 @@ class TestConfig:
         new_config = Config()
         assert new_config.get_format() == "frontmatter"
 
+    def test_get_value(self, config_dir, monkeypatch):
+        """Test get_value method."""
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.toml"
+        config_path.write_text('[storage]\nformat = "hybrid"\n')
+
+        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(Config, "CONFIG_PATH", config_path)
+
+        new_config = Config()
+        assert new_config.get_value("storage.format") == "hybrid"
+        assert new_config.get_value("storage.dir") is None
+        assert new_config.get_value("invalid") is None
+
+    def test_set_value_format(self, config):
+        """Test setting format value."""
+        config.set_value("storage.format", "hybrid")
+        assert config.get_value("storage.format") == "hybrid"
+
+    def test_set_value_dir(self, config):
+        """Test setting dir value."""
+        config.set_value("storage.dir", "/custom/path")
+        assert config.get_value("storage.dir") == "/custom/path"
+
+    def test_set_value_invalid_format(self, config):
+        """Test setting invalid format raises error."""
+        with pytest.raises(ValueError, match="Invalid format"):
+            config.set_value("storage.format", "invalid")
+
+    def test_set_value_invalid_key(self, config):
+        """Test setting invalid key raises error."""
+        with pytest.raises(ValueError, match="Unknown section"):
+            config.set_value("invalid.key", "value")
+
+    def test_set_value_unknown_storage_key(self, config):
+        """Test setting unknown storage key raises error."""
+        with pytest.raises(ValueError, match="Unknown storage key"):
+            config.set_value("storage.unknown", "value")
+
+    def test_set_value_invalid_key_format(self, config):
+        """Test setting key with wrong format raises error."""
+        with pytest.raises(ValueError, match="Invalid key"):
+            config.set_value("notsection", "value")
+
+    def test_get_all(self, config):
+        """Test get_all method."""
+        config.set_value("storage.format", "hybrid")
+        config.set_value("storage.dir", "/path")
+
+        all_config = config.get_all()
+        assert all_config == {"storage": {"format": "hybrid", "dir": "/path"}}
+
+    def test_save_and_reload(self, config_dir, monkeypatch):
+        """Test saving and reloading config."""
+        config_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(Config, "CONFIG_PATH", config_dir / "config.toml")
+
+        config = Config()
+        config.set_value("storage.format", "hybrid")
+        config.save()
+
+        # Verify file was created
+        assert (config_dir / "config.toml").exists()
+
+        # Reload
+        config2 = Config()
+        assert config2.get_value("storage.format") == "hybrid"
+
+    def test_storage_dir_from_file(self, config_dir, monkeypatch):
+        """Test storage dir from file config."""
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_path = config_dir / "config.toml"
+        config_path.write_text('[storage]\ndir = "/custom/tasks"\n')
+
+        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(Config, "CONFIG_PATH", config_path)
+        monkeypatch.delenv("TASK_BUTLER_DIR", raising=False)
+
+        from pathlib import Path
+
+        new_config = Config()
+        assert new_config.get_storage_dir() == Path("/custom/tasks")
+
 
 class TestGetConfig:
     """Tests for get_config function."""

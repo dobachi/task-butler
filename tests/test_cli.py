@@ -270,3 +270,88 @@ class TestOtherCommands:
         assert result.exit_code == 0
         assert "important" in result.output
         assert "work" in result.output
+
+
+class TestConfigCommand:
+    """Tests for config commands."""
+
+    @pytest.fixture
+    def config_setup(self, tmp_path, monkeypatch):
+        """Setup config with temporary directory."""
+        from task_butler.config import Config
+        import task_butler.config
+
+        config_dir = tmp_path / ".task-butler"
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
+        monkeypatch.setattr(Config, "CONFIG_PATH", config_dir / "config.toml")
+        # Reset global config
+        monkeypatch.setattr(task_butler.config, "_config", None)
+
+        return config_dir
+
+    def test_config_show_empty(self, config_setup):
+        """Test config show with no configuration."""
+        result = runner.invoke(app, ["config", "show"])
+        assert result.exit_code == 0
+        assert "No configuration set" in result.output
+
+    def test_config_set_format(self, config_setup):
+        """Test config set format."""
+        result = runner.invoke(app, ["config", "set", "storage.format", "hybrid"])
+        assert result.exit_code == 0
+        assert "Set storage.format = hybrid" in result.output
+
+    def test_config_get_format(self, config_setup):
+        """Test config get format after setting."""
+        # Set first
+        runner.invoke(app, ["config", "set", "storage.format", "hybrid"])
+
+        # Reset config to reload from file
+        import task_butler.config
+
+        task_butler.config._config = None
+
+        # Get
+        result = runner.invoke(app, ["config", "get", "storage.format"])
+        assert result.exit_code == 0
+        assert "hybrid" in result.output
+
+    def test_config_get_not_set(self, config_setup):
+        """Test config get for key not set."""
+        result = runner.invoke(app, ["config", "get", "storage.format"])
+        assert result.exit_code == 1
+        assert "not set" in result.output
+
+    def test_config_set_invalid_format(self, config_setup):
+        """Test config set with invalid format value."""
+        result = runner.invoke(app, ["config", "set", "storage.format", "invalid"])
+        assert result.exit_code == 1
+        assert "Invalid format" in result.output
+
+    def test_config_set_invalid_key(self, config_setup):
+        """Test config set with invalid key."""
+        result = runner.invoke(app, ["config", "set", "invalid.key", "value"])
+        assert result.exit_code == 1
+        assert "Unknown section" in result.output
+
+    def test_config_show_after_set(self, config_setup):
+        """Test config show after setting values."""
+        runner.invoke(app, ["config", "set", "storage.format", "hybrid"])
+
+        # Reset config to reload
+        import task_butler.config
+
+        task_butler.config._config = None
+
+        result = runner.invoke(app, ["config", "show"])
+        assert result.exit_code == 0
+        assert "storage.format" in result.output
+        assert "hybrid" in result.output
+
+    def test_config_set_dir(self, config_setup):
+        """Test config set storage dir."""
+        result = runner.invoke(app, ["config", "set", "storage.dir", "/custom/path"])
+        assert result.exit_code == 0
+        assert "Set storage.dir = /custom/path" in result.output

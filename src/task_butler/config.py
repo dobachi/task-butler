@@ -66,7 +66,7 @@ class Config:
         return self.DEFAULT_FORMAT
 
     def get_storage_dir(self, cli_dir: Path | None = None) -> Path:
-        """Get storage directory with precedence: CLI > env > default.
+        """Get storage directory with precedence: CLI > env > file > default.
 
         Args:
             cli_dir: Directory specified via CLI option (highest priority)
@@ -81,7 +81,75 @@ class Config:
         if env_dir:
             return Path(env_dir)
 
+        # Config file
+        file_dir = self._file_config.get("storage", {}).get("dir")
+        if file_dir:
+            return Path(file_dir)
+
         return self.CONFIG_DIR / "tasks"
+
+    def get_value(self, key: str) -> str | None:
+        """Get a configuration value by key.
+
+        Args:
+            key: Config key in dot notation (e.g., "storage.format")
+
+        Returns:
+            The value if set, None otherwise
+        """
+        parts = key.split(".")
+        if len(parts) != 2:
+            return None
+        section, name = parts
+        return self._file_config.get(section, {}).get(name)
+
+    def set_value(self, key: str, value: str) -> None:
+        """Set a configuration value.
+
+        Args:
+            key: Config key in dot notation (e.g., "storage.format")
+            value: Value to set
+
+        Raises:
+            ValueError: If key is invalid or value is not allowed
+        """
+        parts = key.split(".")
+        if len(parts) != 2:
+            raise ValueError(f"Invalid key: {key}")
+
+        section, name = parts
+
+        if section == "storage":
+            if name == "format":
+                if value not in ("frontmatter", "hybrid"):
+                    raise ValueError(f"Invalid format: {value}. Must be 'frontmatter' or 'hybrid'")
+            elif name == "dir":
+                pass  # Any path is valid
+            else:
+                raise ValueError(f"Unknown storage key: {name}")
+        else:
+            raise ValueError(f"Unknown section: {section}")
+
+        # Update in-memory config
+        if section not in self._file_config:
+            self._file_config[section] = {}
+        self._file_config[section][name] = value
+
+    def get_all(self) -> dict:
+        """Get all configuration values.
+
+        Returns:
+            A copy of the configuration dictionary
+        """
+        return self._file_config.copy()
+
+    def save(self) -> None:
+        """Save configuration to file."""
+        import tomli_w
+
+        self.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        with open(self.CONFIG_PATH, "wb") as f:
+            tomli_w.dump(self._file_config, f)
 
 
 # Global config instance
