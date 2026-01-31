@@ -98,9 +98,11 @@ After installation, restart your shell or source the config file.
 
 - **Command completion**: Tab to complete command names (`task-butler st<TAB>` -> `start`)
 - **Option completion**: Tab to complete option names (`--pri<TAB>` -> `--priority`)
-- **Task ID completion**: Tab to see matching task IDs with titles
+- **Task ID completion**: Tab to see matching task IDs
   - Open commands (`start`, `done`, `cancel`) show only pending/in_progress tasks
   - Other commands (`show`, `delete`, `note`) show all tasks
+  - **Zsh/Fish**: Shows task ID with title (recommended)
+  - **Bash**: Shows task ID only (use `task-butler list` to see titles)
 - **Project name completion**: Available for `--project` option
 - **Tag name completion**: Available for `--tag` option
 
