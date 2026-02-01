@@ -1131,10 +1131,8 @@ class TestObsidianHasCreated:
     def test_hybrid_format_respects_obsidian_has_created(self, tmp_path):
         """Test that hybrid format respects obsidian_has_created when saving."""
         from task_butler.storage.markdown import MarkdownStorage
-        from task_butler.storage.obsidian import ObsidianTasksFormat
 
         storage = MarkdownStorage(tmp_path, format="hybrid")
-        formatter = ObsidianTasksFormat()
 
         # Create task without created flag
         task = Task(
