@@ -29,6 +29,14 @@ dependencies = [
     "tomli-w>=1.0.0",
 ]
 
+[project.optional-dependencies]
+llm = [
+    "llama-cpp-python>=0.2.0",
+]
+openai = [
+    "openai>=1.0.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/dobachi/task-butler"
 Repository = "https://github.com/dobachi/task-butler"

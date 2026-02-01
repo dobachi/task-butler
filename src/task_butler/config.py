@@ -9,6 +9,7 @@ from typing import Literal
 
 StorageFormat = Literal["frontmatter", "hybrid"]
 OrganizationMethod = Literal["flat", "kanban"]
+AIProvider = Literal["rule_based", "llama", "openai"]
 
 
 class Config:
@@ -150,6 +151,14 @@ class Config:
                     raise ValueError(f"Invalid method: {value}. Must be 'flat' or 'kanban'")
             else:
                 raise ValueError(f"Unknown organization key: {name}")
+        elif section == "ai":
+            if name == "provider":
+                if value not in ("rule_based", "llama", "openai"):
+                    raise ValueError(
+                        f"Invalid provider: {value}. Must be 'rule_based', 'llama', or 'openai'"
+                    )
+            else:
+                raise ValueError(f"Unknown ai key: {name}")
         else:
             raise ValueError(f"Unknown section: {section}")
 
@@ -167,6 +176,32 @@ class Config:
                 pass  # Any directory name is valid
             else:
                 raise ValueError(f"Unknown organization.kanban key: {name}")
+        elif section == "ai" and subsection == "llama":
+            if name in ("model_name", "model_path", "n_ctx", "n_gpu_layers"):
+                pass  # Valid llama settings
+            else:
+                raise ValueError(f"Unknown ai.llama key: {name}")
+        elif section == "ai" and subsection == "openai":
+            if name in ("model", "api_key_env"):
+                pass  # Valid openai settings
+            else:
+                raise ValueError(f"Unknown ai.openai key: {name}")
+        elif section == "ai" and subsection == "analysis":
+            if name in (
+                "weight_deadline",
+                "weight_dependencies",
+                "weight_effort",
+                "weight_staleness",
+                "weight_priority",
+            ):
+                pass  # Valid analysis weights
+            else:
+                raise ValueError(f"Unknown ai.analysis key: {name}")
+        elif section == "ai" and subsection == "planning":
+            if name in ("default_hours", "buffer_ratio", "morning_hours", "start_time"):
+                pass  # Valid planning settings
+            else:
+                raise ValueError(f"Unknown ai.planning key: {name}")
         else:
             raise ValueError(f"Unknown section: {section}.{subsection}")
 
@@ -228,6 +263,62 @@ class Config:
         }
         kanban_config = self._file_config.get("organization", {}).get("kanban", {})
         return {**defaults, **kanban_config}
+
+    def get_ai_provider(self) -> AIProvider:
+        """Get the AI provider to use.
+
+        Returns:
+            The AI provider name ('rule_based', 'llama', or 'openai')
+        """
+        provider = self._file_config.get("ai", {}).get("provider", "rule_based")
+        if provider in ("rule_based", "llama", "openai"):
+            return provider  # type: ignore
+        return "rule_based"
+
+    def get_ai_config(self) -> dict:
+        """Get all AI-related configuration.
+
+        Returns:
+            Dictionary with AI configuration
+        """
+        defaults = {
+            "provider": "rule_based",
+            "llama": {
+                "model_name": "tinyllama-1.1b",
+                "model_path": "",
+                "n_ctx": 2048,
+                "n_gpu_layers": 0,
+            },
+            "openai": {
+                "model": "gpt-4o-mini",
+                "api_key_env": "OPENAI_API_KEY",
+            },
+            "analysis": {
+                "weight_deadline": 0.30,
+                "weight_dependencies": 0.25,
+                "weight_effort": 0.20,
+                "weight_staleness": 0.15,
+                "weight_priority": 0.10,
+            },
+            "planning": {
+                "default_hours": 8.0,
+                "buffer_ratio": 0.1,
+                "morning_hours": 4.0,
+                "start_time": "09:00",
+            },
+        }
+
+        ai_config = self._file_config.get("ai", {})
+
+        # Deep merge with defaults
+        result = defaults.copy()
+        for key, value in ai_config.items():
+            if isinstance(value, dict) and key in result:
+                result[key] = {**result[key], **value}
+            else:
+                result[key] = value
+
+        return result
 
     def save(self) -> None:
         """Save configuration to file."""
