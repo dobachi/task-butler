@@ -8,11 +8,13 @@ from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
+from rich.prompt import Confirm, Prompt
 
 from ...core.task_manager import TaskManager
 from ...models.enums import Frequency, Priority
 from ...models.task import RecurrenceRule
 from ..completion import complete_task_id
+from ..date_picker import pick_date
 
 console = Console()
 
@@ -79,9 +81,136 @@ def parse_recurrence(value: str) -> RecurrenceRule:
     raise typer.BadParameter(f"Invalid recurrence format: {value}")
 
 
+def wizard_add(manager: TaskManager, initial_title: Optional[str] = None) -> None:
+    """Interactive wizard for adding a task."""
+    # 1. タイトル（必須）
+    if initial_title:
+        title = initial_title
+        console.print(f"[bold]タスク名:[/bold] {title}")
+    else:
+        title = Prompt.ask("[bold]タスク名[/bold]")
+        if not title:
+            console.print("[red]タスク名は必須です[/red]")
+            raise typer.Exit(1)
+
+    # 2. 説明
+    description = Prompt.ask("説明", default="")
+
+    # 3. 優先度
+    priority_str = Prompt.ask(
+        "優先度",
+        choices=["urgent", "high", "medium", "low", "lowest"],
+        default="medium",
+    )
+
+    # 4. 期限 (カレンダー)
+    console.print("\n[cyan]期限を設定しますか？[/cyan]")
+    if Confirm.ask("カレンダーを開く", default=False):
+        due_date = pick_date("期限")
+    else:
+        due_date = None
+
+    # 5. 予定日 (カレンダー)
+    console.print("\n[cyan]予定日を設定しますか？[/cyan]")
+    if Confirm.ask("カレンダーを開く", default=False):
+        scheduled_date = pick_date("予定日")
+    else:
+        scheduled_date = None
+
+    # 6. 開始日 (カレンダー)
+    console.print("\n[cyan]開始日を設定しますか？[/cyan]")
+    if Confirm.ask("カレンダーを開く", default=False):
+        start_date = pick_date("開始日")
+    else:
+        start_date = None
+
+    # 7. タグ
+    tags_str = Prompt.ask("タグ (カンマ区切り)", default="")
+    tags = [t.strip() for t in tags_str.split(",") if t.strip()] if tags_str else []
+
+    # 8. プロジェクト
+    project = Prompt.ask("プロジェクト", default="") or None
+
+    # 9. 親タスク
+    parent_id = Prompt.ask("親タスクID", default="") or None
+
+    # 10. 依存タスク
+    depends_str = Prompt.ask("依存タスクID (カンマ区切り)", default="")
+    depends = [d.strip() for d in depends_str.split(",") if d.strip()] if depends_str else []
+
+    # 11. 見積時間
+    est_str = Prompt.ask("見積時間 (時間)", default="")
+    estimated_hours = float(est_str) if est_str else None
+
+    # 12. 繰り返し
+    recurrence_str = (
+        Prompt.ask(
+            "繰り返し",
+            choices=["", "daily", "weekly", "monthly", "yearly"],
+            default="",
+        )
+        or None
+    )
+
+    # 確認表示
+    console.print("\n[bold]--- タスク内容 ---[/bold]")
+    console.print(f"タイトル: {title}")
+    if description:
+        console.print(f"説明: {description}")
+    console.print(f"優先度: {priority_str}")
+    if due_date:
+        console.print(f"期限: {due_date}")
+    if scheduled_date:
+        console.print(f"予定日: {scheduled_date}")
+    if start_date:
+        console.print(f"開始日: {start_date}")
+    if tags:
+        console.print(f"タグ: {', '.join(tags)}")
+    if project:
+        console.print(f"プロジェクト: {project}")
+    if parent_id:
+        console.print(f"親タスク: {parent_id}")
+    if depends:
+        console.print(f"依存タスク: {', '.join(depends)}")
+    if estimated_hours:
+        console.print(f"見積時間: {estimated_hours}時間")
+    if recurrence_str:
+        console.print(f"繰り返し: {recurrence_str}")
+
+    if Confirm.ask("\nこのタスクを作成しますか？", default=True):
+        # Convert date to datetime if needed
+        due_datetime = datetime.combine(due_date, datetime.min.time()) if due_date else None
+        scheduled_datetime = (
+            datetime.combine(scheduled_date, datetime.min.time()) if scheduled_date else None
+        )
+        start_datetime = datetime.combine(start_date, datetime.min.time()) if start_date else None
+
+        # Parse recurrence
+        recurrence = parse_recurrence(recurrence_str) if recurrence_str else None
+
+        task = manager.add(
+            title=title,
+            description=description or "",
+            priority=Priority(priority_str),
+            due_date=due_datetime,
+            scheduled_date=scheduled_datetime,
+            start_date=start_datetime,
+            tags=tags or None,
+            project=project,
+            parent_id=parent_id,
+            dependencies=depends or None,
+            estimated_hours=estimated_hours,
+            recurrence=recurrence,
+        )
+        console.print(f"\n[green]✓ タスクを作成しました: {task.short_id}[/green]")
+    else:
+        console.print("[yellow]キャンセルしました[/yellow]")
+
+
 def add_task(
     ctx: typer.Context,
-    title: str = typer.Argument(..., help="Task title"),
+    title: Optional[str] = typer.Argument(None, help="Task title"),
+    wizard: bool = typer.Option(False, "--wizard", "-w", help="Interactive wizard mode"),
     description: Optional[str] = typer.Option(None, "--desc", "-D", help="Task description"),
     priority: Priority = typer.Option(Priority.MEDIUM, "--priority", "-p", help="Task priority"),
     due: Optional[str] = typer.Option(
@@ -124,6 +253,14 @@ def add_task(
     manager = TaskManager(
         storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs
     )
+
+    if wizard:
+        wizard_add(manager, title)
+        return
+
+    if not title:
+        console.print("[red]Error: タイトルが必要です (--wizard で対話モード)[/red]")
+        raise typer.Exit(1)
 
     try:
         # Parse optional fields
