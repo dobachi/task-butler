@@ -11,6 +11,7 @@ Your digital butler for task management. A CLI tool that helps you manage tasks,
 - **Hierarchical Tasks**: Create parent/child relationships between tasks
 - **Dependencies**: Define task dependencies to track blocking work
 - **Recurring Tasks**: Set up daily, weekly, monthly, or yearly recurring tasks
+- **AI Integration**: Task analysis, smart suggestions, and daily planning with local LLM
 - **Obsidian Integration**: Export/import in Obsidian Tasks plugin compatible format
 - **Rich Output**: Beautiful terminal output with colors and formatting
 - **Git Friendly**: All data stored in plain text, easy to version control
@@ -383,10 +384,12 @@ uv run pytest --cov=task_butler
   - Recurring tasks
   - CLI interface
 
-- [ ] **Phase 2**: AI Integration
+- [x] **Phase 2**: AI Integration
   - Task analysis and prioritization
   - Smart suggestions
   - Daily planning assistance
+  - Local LLM support (llama-cpp-python)
+  - Japanese language model support
 
 - [x] **Phase 3**: Obsidian Integration
   - Use Obsidian vault as storage directory
@@ -451,6 +454,97 @@ task-butler obsidian import --link  # Import + replace source lines with links
 task-butler obsidian check     # Detect conflicts with frontmatter
 task-butler obsidian resolve   # Resolve conflicts
 task-butler obsidian format    # Display single task in Obsidian format
+```
+
+## AI Integration
+
+Task Butler includes AI-powered features for task analysis, smart suggestions, and daily planning.
+
+### Quick Start
+
+```bash
+# Download a model (first time only)
+tb ai download tinyllama-1.1b    # English (lightweight, 670MB)
+tb ai download elyza-jp-7b       # Japanese (recommended for Japanese, 4GB)
+
+# Enable LLM provider
+tb config set ai.provider llama
+tb config set ai.llama.model_name elyza-jp-7b  # For Japanese
+
+# Set output language
+tb config set ai.language ja     # Japanese
+tb config set ai.language en     # English
+```
+
+### AI Commands
+
+```bash
+# Analyze tasks and get priority scores
+tb analyze                # Analyze all open tasks
+tb analyze abc123         # Analyze specific task
+tb analyze --save         # Save analysis to task notes
+
+# Get smart task suggestions
+tb suggest                # Suggest next tasks
+tb suggest --hours 2      # Tasks fitting in 2 hours
+tb suggest --energy low   # Tasks for low energy
+tb suggest --count 5      # Get 5 suggestions
+
+# Generate daily plan
+tb plan                   # Today's plan (8 hours)
+tb plan --hours 6         # Custom hours
+tb plan --date 2025-02-01 # Specific date
+```
+
+### Available Models
+
+| Model | Size | Language | Description |
+|-------|------|----------|-------------|
+| `tinyllama-1.1b` | 670MB | English | Lightweight, fast |
+| `phi-2` | 1.6GB | English | Better reasoning |
+| `elyza-jp-7b` | 4GB | Japanese | Best for Japanese |
+
+### Model Management
+
+```bash
+tb ai status              # Show current AI configuration
+tb ai models              # List available models
+tb ai download MODEL      # Download a model
+tb ai delete MODEL        # Delete a model
+```
+
+### Configuration
+
+```toml
+# ~/.task-butler/config.toml
+[ai]
+provider = "llama"        # "llama", "rule_based", or "openai"
+language = "ja"           # Output language: "en" or "ja"
+
+[ai.llama]
+model_name = "elyza-jp-7b"
+n_ctx = 2048              # Context window size
+n_gpu_layers = 0          # GPU layers (0 = CPU only)
+
+[ai.analysis]
+weight_deadline = 0.3     # Deadline importance
+weight_dependencies = 0.25
+weight_effort = 0.2
+weight_staleness = 0.15
+weight_priority = 0.1
+```
+
+### Fallback Mode
+
+If no LLM is installed, Task Butler uses a rule-based analyzer that provides:
+- Priority scoring based on deadlines, dependencies, and effort
+- Task suggestions based on available time
+- Basic daily planning
+
+Install the LLM optional dependency for enhanced AI features:
+
+```bash
+pip install markdown-task-butler[llm]
 ```
 
 ## License

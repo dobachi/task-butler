@@ -11,6 +11,7 @@
 - **階層構造タスク**: 親子関係でタスクを構造化
 - **依存関係**: タスク間の依存関係を定義し、ブロッキングを追跡
 - **繰り返しタスク**: 日次、週次、月次、年次の繰り返しタスクを設定
+- **AI統合**: ローカルLLMによるタスク分析、スマート提案、日次計画
 - **Obsidian連携**: Obsidian Tasksプラグイン互換フォーマットでのエクスポート/インポート
 - **リッチな出力**: カラーとフォーマットによる美しいターミナル出力
 - **Git対応**: 全てのデータはプレーンテキストで保存、バージョン管理が容易
@@ -383,10 +384,12 @@ uv run pytest --cov=task_butler
   - 繰り返しタスク
   - CLIインターフェース
 
-- [ ] **Phase 2**: AI統合
+- [x] **Phase 2**: AI統合
   - タスク分析と優先順位付け
   - スマート提案
   - 日次計画アシスタント
+  - ローカルLLMサポート（llama-cpp-python）
+  - 日本語モデル対応
 
 - [x] **Phase 3**: Obsidian連携
   - ObsidianのVaultをストレージディレクトリとして使用
@@ -451,6 +454,97 @@ task-butler obsidian import --link  # インポート＋ソース行をリンク
 task-butler obsidian check     # フロントマターとの差分を検知
 task-butler obsidian resolve   # 差分を解決
 task-butler obsidian format    # 単一タスクをObsidian形式で表示
+```
+
+## AI統合
+
+Task ButlerにはAIによるタスク分析、スマート提案、日次計画機能が含まれています。
+
+### クイックスタート
+
+```bash
+# モデルをダウンロード（初回のみ）
+tb ai download tinyllama-1.1b    # 英語（軽量、670MB）
+tb ai download elyza-jp-7b       # 日本語（推奨、4GB）
+
+# LLMプロバイダーを有効化
+tb config set ai.provider llama
+tb config set ai.llama.model_name elyza-jp-7b  # 日本語用
+
+# 出力言語を設定
+tb config set ai.language ja     # 日本語
+tb config set ai.language en     # 英語
+```
+
+### AIコマンド
+
+```bash
+# タスクを分析して優先度スコアを取得
+tb analyze                # 全タスクを分析
+tb analyze abc123         # 特定タスクを分析
+tb analyze --save         # 分析結果をタスクのノートに保存
+
+# スマートなタスク提案を取得
+tb suggest                # 次のタスクを提案
+tb suggest --hours 2      # 2時間以内に終わるタスク
+tb suggest --energy low   # 低エネルギー向けタスク
+tb suggest --count 5      # 5件の提案を取得
+
+# 日次計画を生成
+tb plan                   # 今日の計画（8時間）
+tb plan --hours 6         # カスタム時間
+tb plan --date 2025-02-01 # 特定日の計画
+```
+
+### 利用可能なモデル
+
+| モデル | サイズ | 言語 | 説明 |
+|--------|-------|------|------|
+| `tinyllama-1.1b` | 670MB | 英語 | 軽量・高速 |
+| `phi-2` | 1.6GB | 英語 | より高度な推論 |
+| `elyza-jp-7b` | 4GB | 日本語 | 日本語に最適 |
+
+### モデル管理
+
+```bash
+tb ai status              # 現在のAI設定を表示
+tb ai models              # 利用可能なモデル一覧
+tb ai download MODEL      # モデルをダウンロード
+tb ai delete MODEL        # モデルを削除
+```
+
+### 設定
+
+```toml
+# ~/.task-butler/config.toml
+[ai]
+provider = "llama"        # "llama", "rule_based", or "openai"
+language = "ja"           # 出力言語: "en" or "ja"
+
+[ai.llama]
+model_name = "elyza-jp-7b"
+n_ctx = 2048              # コンテキストウィンドウサイズ
+n_gpu_layers = 0          # GPUレイヤー数（0 = CPUのみ）
+
+[ai.analysis]
+weight_deadline = 0.3     # 期限の重要度
+weight_dependencies = 0.25
+weight_effort = 0.2
+weight_staleness = 0.15
+weight_priority = 0.1
+```
+
+### フォールバックモード
+
+LLMがインストールされていない場合、ルールベースの分析器が使用されます：
+- 期限、依存関係、工数に基づく優先度スコアリング
+- 利用可能時間に基づくタスク提案
+- 基本的な日次計画
+
+拡張AI機能を使用するには、LLMオプション依存をインストール：
+
+```bash
+pip install markdown-task-butler[llm]
 ```
 
 ## ライセンス
