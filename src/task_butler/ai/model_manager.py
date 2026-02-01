@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import urllib.request
 from pathlib import Path
 from typing import Callable
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, DownloadColumn
+from rich.progress import BarColumn, DownloadColumn, Progress, SpinnerColumn, TextColumn
 
 console = Console()
 

@@ -18,7 +18,6 @@ ai_app = typer.Typer(
 @ai_app.command(name="status")
 def ai_status() -> None:
     """Show AI provider status and configuration."""
-    from ...ai import get_provider
     from ...ai.model_manager import ModelManager
     from ...ai.providers.llama import is_llama_available
     from ...config import get_config
@@ -47,7 +46,7 @@ def ai_status() -> None:
             model_path = manager.get_model_path(model_name)
             console.print(f"  Model path: [green]{model_path}[/green]")
         else:
-            console.print(f"  Model path: [yellow]not downloaded[/yellow]")
+            console.print("  Model path: [yellow]not downloaded[/yellow]")
             console.print()
             console.print("[dim]Run 'tb ai download' to download the model[/dim]")
 
@@ -87,7 +86,7 @@ def download_model(
     ),
 ) -> None:
     """Download an AI model for local inference."""
-    from ...ai.model_manager import ModelManager, AVAILABLE_MODELS
+    from ...ai.model_manager import AVAILABLE_MODELS, ModelManager
 
     if model_name not in AVAILABLE_MODELS:
         console.print(f"[red]Unknown model: {model_name}[/red]")

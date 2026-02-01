@@ -28,7 +28,6 @@ def plan_day(
     from ...ai.planner import DailyPlanner
     from ...config import get_config
     from ...core.task_manager import TaskManager
-    from ...models.enums import Priority
 
     config = get_config()
     storage_dir = config.get_storage_dir(ctx.obj.get("storage_dir") if ctx.obj else None)

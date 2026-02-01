@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import re
 from typing import TYPE_CHECKING
 
-from ..base import AIProvider, AnalysisResult, PlanResult, SuggestionResult, TimeSlot
-from ..model_manager import ModelManager, DEFAULT_MODEL
+from ..base import AIProvider, AnalysisResult, PlanResult, SuggestionResult
+from ..model_manager import DEFAULT_MODEL, ModelManager
 from .rule_based import RuleBasedProvider
 
 # Language-specific prompt templates
@@ -51,7 +50,6 @@ PROMPTS = {
 }
 
 if TYPE_CHECKING:
-    from datetime import datetime
     from ...models.task import Task
 
 # Check if llama-cpp-python is available

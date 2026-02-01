@@ -1,7 +1,7 @@
 """AI integration module for Task Butler."""
 
 from .analyzer import TaskAnalyzer
-from .base import AIProvider, AnalysisResult, SuggestionResult, PlanResult
+from .base import AIProvider, AnalysisResult, PlanResult, SuggestionResult
 from .model_manager import ModelManager
 from .planner import DailyPlanner
 from .suggester import TaskSuggester

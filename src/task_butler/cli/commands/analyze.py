@@ -67,7 +67,7 @@ def analyze_tasks(
             # Save analysis to task notes
             note = f"AI分析スコア: {result.score}/100 - {result.reasoning}"
             manager.add_note(task.id, note)
-            console.print(f"[green]✓[/green] Analysis saved to task notes")
+            console.print("[green]✓[/green] Analysis saved to task notes")
     else:
         # Analyze all tasks
         results = analyzer.analyze_all(all_tasks)[:count]
@@ -100,7 +100,7 @@ def _show_single_analysis(task, result) -> None:
     }
 
     console.print()
-    console.print(f"[bold]📊 タスク分析[/bold]")
+    console.print("[bold]📊 タスク分析[/bold]")
     console.print()
 
     icon = priority_icons.get(task.priority, "🔼")
