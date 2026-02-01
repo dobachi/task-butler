@@ -4,6 +4,15 @@
 
 ロードマップ Phase 2 として、AI統合機能を実装します。タスク管理をよりスマートにするため、以下の3つの主要機能を追加します。
 
+## 設計方針
+
+[DESIGN.md](DESIGN.md) に基づき、以下の方針で実装します：
+
+- **AI方式**: `llama-cpp-python` + 初回起動時に小型モデル自動ダウンロード
+- **ローカル優先**: インターネット接続なしでも動作
+- **軽量**: 小型モデル（例: TinyLlama, Phi-2）を使用
+- **オプション**: OpenAI API も選択可能
+
 ## 実装機能
 
 ### 1. タスク分析と優先順位付け (`tb analyze`)
@@ -42,23 +51,23 @@ tb analyze --save
 - プロジェクトの重要度
 - タスクの滞留時間
 
-### 2. スマート提案 (`tb recommend`)
+### 2. スマート提案 (`tb suggest`)
 
 現在の状況に基づいて、次に取り組むべきタスクを提案します。
 
 **コマンド例：**
 ```bash
 # 次のタスクを提案
-tb recommend
+tb suggest
 
 # 利用可能時間を指定
-tb recommend --hours 2
+tb suggest --hours 2
 
 # エネルギーレベルを考慮
-tb recommend --energy low
+tb suggest --energy low
 
 # 提案数を指定
-tb recommend --count 5
+tb suggest --count 5
 ```
 
 **出力例：**
@@ -123,25 +132,45 @@ src/task_butler/
 │   ├── __init__.py
 │   ├── base.py           # AIプロバイダー抽象クラス
 │   ├── analyzer.py       # タスク分析エンジン
-│   ├── recommender.py    # スマート提案エンジン
+│   ├── suggester.py      # スマート提案エンジン
 │   ├── planner.py        # 日次計画アシスタント
+│   ├── model_manager.py  # モデルダウンロード・管理
 │   └── providers/
 │       ├── __init__.py
-│       ├── local.py      # ルールベース（デフォルト）
+│       ├── llama.py      # llama-cpp-python（デフォルト）
+│       ├── rule_based.py # ルールベース（フォールバック）
 │       └── openai.py     # OpenAI API（オプション）
 ├── cli/commands/
 │   ├── analyze.py        # 新規
-│   ├── recommend.py      # 新規
+│   ├── suggest.py        # 新規
 │   └── plan.py           # 新規
 ```
 
 ### 依存関係の追加（pyproject.toml）
 
 ```toml
+[project.dependencies]
+# 既存の依存関係に追加
+llama-cpp-python = ">=0.2.0"  # ローカルLLM推論
+
 [project.optional-dependencies]
-ai = [
+openai = [
     "openai>=1.0.0",      # OpenAI API（オプション）
 ]
+```
+
+### モデル管理
+
+初回起動時に小型モデルを自動ダウンロード：
+
+```bash
+# モデル保存場所
+~/.task-butler/models/
+├── tinyllama-1.1b-chat.gguf    # デフォルトモデル（約600MB）
+└── phi-2.gguf                   # 代替モデル（約1.5GB）
+
+# 手動でモデルを指定
+tb config set ai.model_path /path/to/custom/model.gguf
 ```
 
 ### 設定の追加（config.toml）
@@ -149,8 +178,17 @@ ai = [
 ```toml
 [ai]
 enabled = true
-provider = "local"        # "local" or "openai"
-openai_model = "gpt-4o-mini"
+provider = "llama"        # "llama", "rule_based", or "openai"
+
+[ai.llama]
+model_name = "tinyllama-1.1b-chat"  # 自動ダウンロードするモデル
+model_path = ""                      # カスタムモデルパス（空なら自動）
+n_ctx = 2048                         # コンテキストサイズ
+n_gpu_layers = 0                     # GPU使用レイヤー数（0=CPU only）
+
+[ai.openai]
+model = "gpt-4o-mini"
+api_key_env = "OPENAI_API_KEY"       # 環境変数名
 
 [ai.analysis]
 weight_deadline = 0.3     # 期限の重み
@@ -183,27 +221,35 @@ class Task(BaseModel):
 ### Phase 2.1: 基盤構築
 - [ ] `ai/` ディレクトリ構造の作成
 - [ ] AIプロバイダー抽象クラスの実装
-- [ ] ローカル（ルールベース）プロバイダーの実装
+- [ ] ルールベースプロバイダーの実装（フォールバック用）
 - [ ] 設定ファイルへのAIセクション追加
 
-### Phase 2.2: タスク分析
+### Phase 2.2: llama-cpp-python統合
+- [ ] `llama-cpp-python` 依存関係の追加
+- [ ] `ai/model_manager.py` の実装（モデル自動ダウンロード）
+- [ ] `ai/providers/llama.py` の実装
+- [ ] 初回起動時のモデルダウンロード機能
+- [ ] テストの追加
+
+### Phase 2.3: タスク分析
 - [ ] `ai/analyzer.py` の実装
 - [ ] `cli/commands/analyze.py` の実装
 - [ ] タスクモデルへのAIフィールド追加
+- [ ] プロンプトテンプレートの設計
 - [ ] テストの追加
 
-### Phase 2.3: スマート提案
-- [ ] `ai/recommender.py` の実装
-- [ ] `cli/commands/recommend.py` の実装
+### Phase 2.4: スマート提案
+- [ ] `ai/suggester.py` の実装
+- [ ] `cli/commands/suggest.py` の実装
 - [ ] テストの追加
 
-### Phase 2.4: 日次計画
+### Phase 2.5: 日次計画
 - [ ] `ai/planner.py` の実装
 - [ ] `cli/commands/plan.py` の実装
 - [ ] インタラクティブモードの実装
 - [ ] テストの追加
 
-### Phase 2.5: OpenAI統合（オプション）
+### Phase 2.6: OpenAI統合（オプション）
 - [ ] `ai/providers/openai.py` の実装
 - [ ] APIキー管理の実装
 - [ ] ドキュメントの追加
@@ -211,9 +257,11 @@ class Task(BaseModel):
 ## 受け入れ基準
 
 - [ ] `tb analyze` コマンドが動作する
-- [ ] `tb recommend` コマンドが動作する
+- [ ] `tb suggest` コマンドが動作する
 - [ ] `tb plan` コマンドが動作する
-- [ ] ローカル（ルールベース）モードがデフォルトで動作する
+- [ ] 初回起動時にモデルが自動ダウンロードされる
+- [ ] `llama-cpp-python` によるローカル推論が動作する
+- [ ] ルールベースモードがフォールバックとして動作する
 - [ ] OpenAI統合がオプションで利用可能
 - [ ] 既存機能に影響を与えない
 - [ ] テストカバレッジ80%以上
