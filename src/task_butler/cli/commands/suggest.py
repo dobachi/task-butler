@@ -12,9 +12,7 @@ console = Console()
 
 def suggest_tasks(
     ctx: typer.Context,
-    hours: Optional[float] = typer.Option(
-        None, "--hours", "-H", help="Available working hours"
-    ),
+    hours: Optional[float] = typer.Option(None, "--hours", "-H", help="Available working hours"),
     energy: Optional[str] = typer.Option(
         None,
         "--energy",
@@ -22,9 +20,7 @@ def suggest_tasks(
         help="Energy level: low, medium, high",
     ),
     count: int = typer.Option(5, "--count", "-n", help="Number of suggestions"),
-    quick: bool = typer.Option(
-        False, "--quick", "-q", help="Show only quick tasks (< 30 min)"
-    ),
+    quick: bool = typer.Option(False, "--quick", "-q", help="Show only quick tasks (< 30 min)"),
 ) -> None:
     """Suggest which tasks to work on next.
 

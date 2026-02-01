@@ -55,6 +55,7 @@ if TYPE_CHECKING:
 # Check if llama-cpp-python is available
 try:
     from llama_cpp import Llama
+
     LLAMA_AVAILABLE = True
 except ImportError:
     LLAMA_AVAILABLE = False
@@ -107,6 +108,7 @@ class LlamaProvider(AIProvider):
         # Determine model path
         if self.model_path:
             from pathlib import Path
+
             path = Path(self.model_path)
             if not path.exists():
                 return None
@@ -184,10 +186,10 @@ class LlamaProvider(AIProvider):
             # Clean up the response
             reasoning = response.strip()
             # Remove any incomplete sentences at the end
-            if reasoning and not reasoning.endswith(('。', '.', '!', '?')):
-                last_period = max(reasoning.rfind('。'), reasoning.rfind('.'))
+            if reasoning and not reasoning.endswith(("。", ".", "!", "?")):
+                last_period = max(reasoning.rfind("。"), reasoning.rfind("."))
                 if last_period > 0:
-                    reasoning = reasoning[:last_period + 1]
+                    reasoning = reasoning[: last_period + 1]
 
             if reasoning and len(reasoning) > 10:
                 # Generate suggestions using LLM
@@ -218,12 +220,12 @@ class LlamaProvider(AIProvider):
 """
         response = self._generate(prompt, max_tokens=100)
         if response:
-            lines = [line.strip() for line in response.strip().split('\n') if line.strip()]
+            lines = [line.strip() for line in response.strip().split("\n") if line.strip()]
             # Clean up suggestions
             suggestions = []
             for line in lines[:2]:
                 # Remove numbering
-                line = re.sub(r'^[\d\.\-\*]+\s*', '', line)
+                line = re.sub(r"^[\d\.\-\*]+\s*", "", line)
                 if line and len(line) > 5:
                     suggestions.append(line)
             return suggestions
@@ -238,9 +240,7 @@ class LlamaProvider(AIProvider):
     ) -> list[SuggestionResult]:
         """Suggest tasks with LLM-generated reasons."""
         # Get rule-based suggestions for ordering
-        rule_suggestions = self._fallback.suggest_tasks(
-            tasks, hours_available, energy_level, count
-        )
+        rule_suggestions = self._fallback.suggest_tasks(tasks, hours_available, energy_level, count)
 
         llm = self._get_llm()
         if llm is None:
@@ -271,9 +271,9 @@ class LlamaProvider(AIProvider):
             if response:
                 cleaned = response.strip()
                 # Take first sentence only
-                for sep in ['。', '.', '\n']:
+                for sep in ["。", ".", "\n"]:
                     if sep in cleaned:
-                        cleaned = cleaned.split(sep)[0] + ('。' if sep == '。' else '')
+                        cleaned = cleaned.split(sep)[0] + ("。" if sep == "。" else "")
                         break
                 if cleaned and len(cleaned) > 5:
                     reason = f"🤖 {cleaned}"
@@ -322,6 +322,7 @@ class LlamaProvider(AIProvider):
 
         if task.due_date:
             from datetime import datetime
+
             days = (task.due_date - datetime.now()).days
             if days < 0:
                 lines.append(p["deadline_overdue"].format(days=days * -1))

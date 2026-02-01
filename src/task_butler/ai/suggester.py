@@ -23,6 +23,7 @@ class TaskSuggester:
         """
         if provider is None:
             from . import get_provider
+
             provider = get_provider()
         self.provider = provider
 
@@ -67,9 +68,7 @@ class TaskSuggester:
         max_hours = max_minutes / 60
 
         # Filter to quick tasks
-        quick_tasks = [
-            t for t in tasks if t.is_open and (t.estimated_hours or 1.0) <= max_hours
-        ]
+        quick_tasks = [t for t in tasks if t.is_open and (t.estimated_hours or 1.0) <= max_hours]
 
         if not quick_tasks:
             return []

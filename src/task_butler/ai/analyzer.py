@@ -21,6 +21,7 @@ class TaskAnalyzer:
         """
         if provider is None:
             from . import get_provider
+
             provider = get_provider()
         self.provider = provider
 

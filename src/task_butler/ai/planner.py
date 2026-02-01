@@ -33,6 +33,7 @@ class DailyPlanner:
         """
         if provider is None:
             from . import get_provider
+
             provider = get_provider()
         self.provider = provider
         self.default_hours = default_hours
@@ -124,9 +125,7 @@ class DailyPlanner:
 
         # Summary
         lines.append("")
-        lines.append(
-            f"スケジュール済み: {plan.scheduled_hours:.1f}h / {plan.total_hours}h"
-        )
+        lines.append(f"スケジュール済み: {plan.scheduled_hours:.1f}h / {plan.total_hours}h")
 
         return "\n".join(lines)
 

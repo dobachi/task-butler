@@ -17,9 +17,7 @@ def analyze_tasks(
         None, help="Task ID to analyze (analyzes all if not specified)"
     ),
     count: int = typer.Option(10, "--count", "-n", help="Number of tasks to show"),
-    save: bool = typer.Option(
-        False, "--save", "-s", help="Save analysis results to tasks"
-    ),
+    save: bool = typer.Option(False, "--save", "-s", help="Save analysis results to tasks"),
     table: bool = typer.Option(False, "--table", "-t", help="Show as table"),
 ) -> None:
     """Analyze tasks and show priority scores with reasoning.
@@ -163,9 +161,7 @@ def _show_analysis_list(results, all_tasks) -> None:
         else:
             score_color = "dim"
 
-        console.print(
-            f"{i}. {icon} [bold]{task.title}[/bold] ({task.short_id})"
-        )
+        console.print(f"{i}. {icon} [bold]{task.title}[/bold] ({task.short_id})")
         console.print(
             f"   スコア: [{score_color}]{result.score:.1f}[/{score_color}] - {result.reasoning}"
         )

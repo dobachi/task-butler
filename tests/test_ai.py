@@ -87,7 +87,11 @@ class TestRuleBasedProvider:
         result = provider.analyze_task(blocking_task, sample_tasks)
 
         assert result.score > 50  # Should be elevated due to blocking
-        assert "ブロック" in result.reasoning or "期限" in result.reasoning or "標準" in result.reasoning
+        assert (
+            "ブロック" in result.reasoning
+            or "期限" in result.reasoning
+            or "標準" in result.reasoning
+        )
 
     def test_analyze_stale_task(self, stale_task, sample_tasks):
         """Test that stale tasks get higher scores."""
@@ -123,9 +127,7 @@ class TestRuleBasedProvider:
         """Test suggestions for low energy."""
         provider = RuleBasedProvider()
 
-        suggestions = provider.suggest_tasks(
-            sample_tasks, energy_level="low", count=5
-        )
+        suggestions = provider.suggest_tasks(sample_tasks, energy_level="low", count=5)
 
         # Low energy should prefer smaller tasks
         assert len(suggestions) > 0

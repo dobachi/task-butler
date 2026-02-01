@@ -160,9 +160,7 @@ class Config:
                     )
             elif name == "language":
                 if value not in ("en", "ja"):
-                    raise ValueError(
-                        f"Invalid language: {value}. Must be 'en' or 'ja'"
-                    )
+                    raise ValueError(f"Invalid language: {value}. Must be 'en' or 'ja'")
             else:
                 raise ValueError(f"Unknown ai key: {name}")
         else:

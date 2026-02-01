@@ -47,6 +47,7 @@ def plan_day(
                 target_date = datetime.now()
             elif date == "tomorrow":
                 from datetime import timedelta
+
                 target_date = datetime.now() + timedelta(days=1)
             else:
                 target_date = datetime.strptime(date, "%Y-%m-%d")
@@ -114,10 +115,12 @@ def _display_plan(plan) -> None:
         for slot in plan.morning_slots:
             task = slot.task
             icon = priority_icons.get(task.priority, "🔼")
-            duration = f"{slot.duration_hours:.1f}h" if slot.duration_hours >= 1 else f"{int(slot.duration_hours * 60)}m"
-            console.print(
-                f"  {slot.start_time}-{slot.end_time} {icon} {task.title} ({duration})"
+            duration = (
+                f"{slot.duration_hours:.1f}h"
+                if slot.duration_hours >= 1
+                else f"{int(slot.duration_hours * 60)}m"
             )
+            console.print(f"  {slot.start_time}-{slot.end_time} {icon} {task.title} ({duration})")
 
     # Afternoon slots
     if plan.afternoon_slots:
@@ -128,10 +131,12 @@ def _display_plan(plan) -> None:
         for slot in plan.afternoon_slots:
             task = slot.task
             icon = priority_icons.get(task.priority, "🔼")
-            duration = f"{slot.duration_hours:.1f}h" if slot.duration_hours >= 1 else f"{int(slot.duration_hours * 60)}m"
-            console.print(
-                f"  {slot.start_time}-{slot.end_time} {icon} {task.title} ({duration})"
+            duration = (
+                f"{slot.duration_hours:.1f}h"
+                if slot.duration_hours >= 1
+                else f"{int(slot.duration_hours * 60)}m"
             )
+            console.print(f"  {slot.start_time}-{slot.end_time} {icon} {task.title} ({duration})")
 
     # No tasks scheduled
     if not plan.morning_slots and not plan.afternoon_slots:

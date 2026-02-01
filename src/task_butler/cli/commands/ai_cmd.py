@@ -29,7 +29,9 @@ def ai_status() -> None:
     console.print("[bold]AI Configuration[/bold]")
     console.print()
     console.print(f"  Provider: [cyan]{provider_name}[/cyan]")
-    console.print(f"  llama-cpp-python: {'[green]installed[/green]' if is_llama_available() else '[dim]not installed[/dim]'}")
+    console.print(
+        f"  llama-cpp-python: {'[green]installed[/green]' if is_llama_available() else '[dim]not installed[/dim]'}"
+    )
 
     if provider_name == "llama":
         llama_config = ai_config.get("llama", {})
@@ -81,9 +83,7 @@ def list_models() -> None:
 
 @ai_app.command(name="download")
 def download_model(
-    model_name: str = typer.Argument(
-        "tinyllama-1.1b", help="Model name to download"
-    ),
+    model_name: str = typer.Argument("tinyllama-1.1b", help="Model name to download"),
 ) -> None:
     """Download an AI model for local inference."""
     from ...ai.model_manager import AVAILABLE_MODELS, ModelManager

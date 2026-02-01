@@ -192,9 +192,8 @@ class RuleBasedProvider(AIProvider):
         for suggestion in suggestions:
             if suggestion.task.due_date and suggestion.task.due_date < datetime.now():
                 warnings.append(f"「{suggestion.task.title}」は期限超過です")
-            elif (
-                suggestion.task.due_date
-                and suggestion.task.due_date < datetime.now() + timedelta(days=1)
+            elif suggestion.task.due_date and suggestion.task.due_date < datetime.now() + timedelta(
+                days=1
             ):
                 warnings.append(f"「{suggestion.task.title}」は明日が期限です")
 
@@ -377,9 +376,7 @@ class RuleBasedProvider(AIProvider):
         # Check blocking dependencies
         blocking = [t for t in all_tasks if t.id in task.dependencies and t.is_open]
         if blocking:
-            suggestions.append(
-                f"まず「{blocking[0].title}」を完了してください（依存関係）"
-            )
+            suggestions.append(f"まず「{blocking[0].title}」を完了してください（依存関係）")
 
         # Check if task is stale
         if scores["staleness"] >= 70:
