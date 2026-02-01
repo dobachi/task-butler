@@ -3,15 +3,25 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
+
+from task_butler import __version__
 
 from .commands import add, analyze, list_cmd, plan, show, status, suggest
 from .commands.ai_cmd import ai_app
 from .commands.config_cmd import config_app
 from .commands.obsidian import obsidian_app
+
+
+def version_callback(value: bool) -> None:
+    """Print version and exit."""
+    if value:
+        print(f"Task Butler v{__version__}")
+        raise typer.Exit()
+
 
 app = typer.Typer(
     name="task-butler",
@@ -61,6 +71,16 @@ def main(
         help="Save format: frontmatter (default), hybrid (includes Obsidian Tasks line)",
         envvar="TASK_BUTLER_FORMAT",
     ),
+    version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version",
+            "-V",
+            help="Show version information and exit.",
+            callback=version_callback,
+            is_eager=True,
+        ),
+    ] = None,
 ) -> None:
     """Task Butler - Your digital butler for task management."""
     ctx.ensure_object(dict)

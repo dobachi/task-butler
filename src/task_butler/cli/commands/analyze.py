@@ -44,6 +44,15 @@ def analyze_tasks(
     )
     analyzer = TaskAnalyzer()
 
+    # Show AI provider info
+    ai_provider = config.get_ai_provider()
+    provider_labels = {
+        "rule_based": "ルールベース",
+        "llama": "ローカルLLM (llama)",
+        "openai": "OpenAI API",
+    }
+    console.print(f"[dim]AIプロバイダー: {provider_labels.get(ai_provider, ai_provider)}[/dim]")
+
     # Get all tasks
     all_tasks = manager.list(include_done=False)
 

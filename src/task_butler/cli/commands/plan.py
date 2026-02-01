@@ -39,6 +39,15 @@ def plan_day(
         storage_dir, format=format, organization=organization, kanban_dirs=kanban_dirs
     )
 
+    # Show AI provider info
+    ai_provider = config.get_ai_provider()
+    provider_labels = {
+        "rule_based": "ルールベース",
+        "llama": "ローカルLLM (llama)",
+        "openai": "OpenAI API",
+    }
+    console.print(f"[dim]AIプロバイダー: {provider_labels.get(ai_provider, ai_provider)}[/dim]")
+
     # Parse date
     target_date = None
     if date:

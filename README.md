@@ -11,7 +11,7 @@ Your digital butler for task management. A CLI tool that helps you manage tasks,
 - **Hierarchical Tasks**: Create parent/child relationships between tasks
 - **Dependencies**: Define task dependencies to track blocking work
 - **Recurring Tasks**: Set up daily, weekly, monthly, or yearly recurring tasks
-- **AI Integration**: Task analysis, smart suggestions, and daily planning with local LLM
+- **AI Features**: Task analysis, smart suggestions, and daily planning with local LLM
 - **Obsidian Integration**: Export/import in Obsidian Tasks plugin compatible format
 - **Rich Output**: Beautiful terminal output with colors and formatting
 - **Git Friendly**: All data stored in plain text, easy to version control
@@ -61,6 +61,32 @@ uv run task-butler
 
 ## Quick Start
 
+### 1. Initial Setup
+
+Run the interactive configuration wizard (recommended):
+
+```bash
+task-butler config init
+```
+
+This allows you to configure:
+- Storage format (frontmatter / hybrid)
+- Task storage directory (default: `~/.task-butler/tasks/`)
+- Obsidian Vault path (optional)
+- Organization method (flat / kanban)
+
+Or set environment variables directly:
+
+```bash
+# Change the base directory for all settings (default: ~/.task-butler/)
+export TASK_BUTLER_HOME=~/my-task-butler
+
+# Change only the task storage location
+export TASK_BUTLER_DIR=~/my-tasks
+```
+
+### 2. Basic Operations
+
 ```bash
 # Add a task
 task-butler add "Write documentation"
@@ -78,7 +104,7 @@ task-butler start abc12345
 task-butler done abc12345
 ```
 
-### Short ID Support
+### 3. Short ID Support
 
 All commands that take a task ID support **short IDs** (first 8 characters of the UUID):
 
@@ -384,7 +410,7 @@ uv run pytest --cov=task_butler
   - Recurring tasks
   - CLI interface
 
-- [x] **Phase 2**: AI Integration
+- [x] **Phase 2**: AI Features
   - Task analysis and prioritization
   - Smart suggestions
   - Daily planning assistance
@@ -456,7 +482,7 @@ task-butler obsidian resolve   # Resolve conflicts
 task-butler obsidian format    # Display single task in Obsidian format
 ```
 
-## AI Integration
+## AI Features
 
 Task Butler includes AI-powered features for task analysis, smart suggestions, and daily planning.
 
@@ -544,6 +570,8 @@ If no LLM is installed, Task Butler uses a rule-based analyzer that provides:
 Install the LLM optional dependency for enhanced AI features:
 
 ```bash
+uv tool install markdown-task-butler[llm]
+# or
 pip install markdown-task-butler[llm]
 ```
 

@@ -119,12 +119,21 @@ class LlamaProvider(AIProvider):
                 return None
 
         try:
-            self._llm = Llama(
-                model_path=str(path),
-                n_ctx=self.n_ctx,
-                n_gpu_layers=self.n_gpu_layers,
-                verbose=self.verbose,
-            )
+            from rich.console import Console
+            from rich.status import Status
+
+            console = Console()
+            with Status(
+                f"[dim]モデルをロード中: {self.model_name}...[/dim]",
+                console=console,
+                spinner="dots",
+            ):
+                self._llm = Llama(
+                    model_path=str(path),
+                    n_ctx=self.n_ctx,
+                    n_gpu_layers=self.n_gpu_layers,
+                    verbose=self.verbose,
+                )
             return self._llm
         except Exception:
             return None
@@ -144,12 +153,21 @@ class LlamaProvider(AIProvider):
             return None
 
         try:
-            result = llm(
-                prompt,
-                max_tokens=max_tokens,
-                stop=["</s>", "\n\n\n"],
-                echo=False,
-            )
+            from rich.console import Console
+            from rich.status import Status
+
+            console = Console()
+            with Status(
+                "[dim]AI分析中...[/dim]",
+                console=console,
+                spinner="dots",
+            ):
+                result = llm(
+                    prompt,
+                    max_tokens=max_tokens,
+                    stop=["</s>", "\n\n\n"],
+                    echo=False,
+                )
             return result["choices"][0]["text"].strip()
         except Exception:
             return None

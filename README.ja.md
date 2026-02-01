@@ -11,7 +11,7 @@
 - **階層構造タスク**: 親子関係でタスクを構造化
 - **依存関係**: タスク間の依存関係を定義し、ブロッキングを追跡
 - **繰り返しタスク**: 日次、週次、月次、年次の繰り返しタスクを設定
-- **AI統合**: ローカルLLMによるタスク分析、スマート提案、日次計画
+- **AI機能**: ローカルLLMによるタスク分析、スマート提案、日次計画
 - **Obsidian連携**: Obsidian Tasksプラグイン互換フォーマットでのエクスポート/インポート
 - **リッチな出力**: カラーとフォーマットによる美しいターミナル出力
 - **Git対応**: 全てのデータはプレーンテキストで保存、バージョン管理が容易
@@ -61,6 +61,32 @@ uv run task-butler
 
 ## クイックスタート
 
+### 1. 初期設定
+
+対話式ウィザードで設定（推奨）：
+
+```bash
+task-butler config init
+```
+
+これにより以下を設定できます：
+- ストレージ形式（frontmatter / hybrid）
+- タスク保存ディレクトリ（デフォルト: `~/.task-butler/tasks/`）
+- Obsidian Vault パス（オプション）
+- 整理方法（flat / kanban）
+
+または、環境変数で直接指定：
+
+```bash
+# 設定全体の場所を変更（デフォルト: ~/.task-butler/）
+export TASK_BUTLER_HOME=~/my-task-butler
+
+# タスク保存場所のみ変更
+export TASK_BUTLER_DIR=~/my-tasks
+```
+
+### 2. 基本操作
+
 ```bash
 # タスクを追加
 task-butler add "ドキュメントを書く"
@@ -78,7 +104,7 @@ task-butler start abc12345
 task-butler done abc12345
 ```
 
-### ショートIDサポート
+### 3. ショートIDサポート
 
 タスクIDを受け取るすべてのコマンドで**ショートID**（UUIDの先頭8文字）が使用できます：
 
@@ -384,7 +410,7 @@ uv run pytest --cov=task_butler
   - 繰り返しタスク
   - CLIインターフェース
 
-- [x] **Phase 2**: AI統合
+- [x] **Phase 2**: AI機能
   - タスク分析と優先順位付け
   - スマート提案
   - 日次計画アシスタント
@@ -456,7 +482,7 @@ task-butler obsidian resolve   # 差分を解決
 task-butler obsidian format    # 単一タスクをObsidian形式で表示
 ```
 
-## AI統合
+## AI機能
 
 Task ButlerにはAIによるタスク分析、スマート提案、日次計画機能が含まれています。
 
@@ -544,6 +570,8 @@ LLMがインストールされていない場合、ルールベースの分析�
 拡張AI機能を使用するには、LLMオプション依存をインストール：
 
 ```bash
+uv tool install markdown-task-butler[llm]
+# or
 pip install markdown-task-butler[llm]
 ```
 
