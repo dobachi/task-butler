@@ -486,6 +486,8 @@ task-butler obsidian format    # Display single task in Obsidian format
 
 Task Butler includes AI-powered features for task analysis, smart suggestions, and daily planning.
 
+> **GPU Support**: For high-speed inference with NVIDIA GPU, see the [AI Feature Setup Guide](docs/AI_SETUP.en.md).
+
 ### Quick Start
 
 ```bash

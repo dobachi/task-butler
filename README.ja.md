@@ -486,6 +486,8 @@ task-butler obsidian format    # 単一タスクをObsidian形式で表示
 
 Task ButlerにはAIによるタスク分析、スマート提案、日次計画機能が含まれています。
 
+> **GPU対応**: NVIDIA GPUでの高速推論については [AI機能セットアップガイド](docs/AI_SETUP.md) を参照してください。
+
 ### クイックスタート
 
 ```bash
