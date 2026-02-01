@@ -180,7 +180,13 @@ class LlamaProvider(AIProvider):
         # Try LLM enhancement for natural language reasoning
         llm = self._get_llm()
         if llm is None:
-            return rule_result
+            # Mark as fallback
+            return AnalysisResult(
+                task_id=rule_result.task_id,
+                score=rule_result.score,
+                reasoning=f"📋 {rule_result.reasoning}",
+                suggestions=rule_result.suggestions,
+            )
 
         # Build context about the task
         context = self._build_task_context(task, all_tasks)
@@ -220,7 +226,13 @@ class LlamaProvider(AIProvider):
                     suggestions=suggestions or rule_result.suggestions,
                 )
 
-        return rule_result
+        # LLM response was empty or too short, fallback to rule-based
+        return AnalysisResult(
+            task_id=rule_result.task_id,
+            score=rule_result.score,
+            reasoning=f"📋 {rule_result.reasoning}",
+            suggestions=rule_result.suggestions,
+        )
 
     def _generate_suggestions_llm(self, task: "Task", context: str) -> list[str]:
         """Generate action suggestions using LLM."""
@@ -262,7 +274,16 @@ class LlamaProvider(AIProvider):
 
         llm = self._get_llm()
         if llm is None:
-            return rule_suggestions
+            # Mark as fallback
+            return [
+                SuggestionResult(
+                    task=s.task,
+                    score=s.score,
+                    reason=f"📋 {s.reason}",
+                    estimated_minutes=s.estimated_minutes,
+                )
+                for s in rule_suggestions
+            ]
 
         p = PROMPTS[self.language]
 
@@ -284,7 +305,7 @@ class LlamaProvider(AIProvider):
 <|assistant|>
 """
             response = self._generate(prompt, max_tokens=80)
-            reason = suggestion.reason  # Default to rule-based reason
+            reason = f"📋 {suggestion.reason}"  # Default to rule-based with fallback marker
 
             if response:
                 cleaned = response.strip()
