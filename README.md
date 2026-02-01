@@ -341,10 +341,31 @@ cd task-butler
 uv sync --dev
 ```
 
+### Running Checks (Before Commit)
+
+Always run `make check` before committing to ensure CI will pass:
+
+```bash
+make check    # Run lint + format check + tests (same as CI)
+```
+
+### Available Make Targets
+
+| Command | Description |
+|---------|-------------|
+| `make check` | Run all CI checks (lint + format + test) |
+| `make lint` | Run ruff linter |
+| `make format` | Check code formatting |
+| `make test` | Run tests |
+| `make fix` | Auto-fix lint and format issues |
+| `make ci` | Full CI simulation (includes typecheck) |
+
 ### Running Tests
 
 ```bash
 uv run pytest
+# or
+make test
 ```
 
 ### Running Tests with Coverage

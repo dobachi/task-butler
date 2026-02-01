@@ -341,10 +341,31 @@ cd task-butler
 uv sync --dev
 ```
 
+### チェックの実行（コミット前に必須）
+
+コミット前に必ず `make check` を実行して、CIが通ることを確認してください：
+
+```bash
+make check    # lint + format + test を実行（CIと同等）
+```
+
+### 利用可能なMakeターゲット
+
+| コマンド | 説明 |
+|---------|------|
+| `make check` | 全CIチェックを実行（lint + format + test） |
+| `make lint` | ruff linterを実行 |
+| `make format` | コードフォーマットをチェック |
+| `make test` | テストを実行 |
+| `make fix` | lint・formatの問題を自動修正 |
+| `make ci` | 完全なCIシミュレーション（typecheckを含む） |
+
 ### テストの実行
 
 ```bash
 uv run pytest
+# または
+make test
 ```
 
 ### カバレッジ付きテスト
