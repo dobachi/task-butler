@@ -11,7 +11,7 @@ from rich.panel import Panel
 from ...core.task_manager import TaskManager
 from ...models.enums import Priority, Status
 from ...storage import AmbiguousTaskIdError
-from ..completion import complete_task_id
+from ..completion import complete_open_task_id
 
 console = Console()
 
@@ -20,10 +20,16 @@ def show_task(
     ctx: typer.Context,
     task_id: Annotated[
         str,
-        typer.Argument(..., help="Task ID (full or short)", autocompletion=complete_task_id),
+        typer.Argument(
+            ..., help="Task ID (full or short)", autocompletion=complete_open_task_id
+        ),
     ],
 ) -> None:
-    """Show detailed information about a task."""
+    """Show detailed information about a task.
+
+    Tab completion shows only open tasks.
+    For completed tasks, use 'tb list --done' to find IDs, then type manually.
+    """
     from ...config import get_config
 
     config = get_config()
