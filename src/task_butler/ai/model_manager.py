@@ -46,10 +46,12 @@ class ModelManager:
         """Initialize model manager.
 
         Args:
-            models_dir: Directory to store models. Defaults to ~/.task-butler/models/
+            models_dir: Directory to store models. Defaults to $TASK_BUTLER_HOME/models/
         """
         if models_dir is None:
-            models_dir = Path.home() / ".task-butler" / "models"
+            from ..config import get_home_dir
+
+            models_dir = get_home_dir() / "models"
         self.models_dir = models_dir
         self.models_dir.mkdir(parents=True, exist_ok=True)
 

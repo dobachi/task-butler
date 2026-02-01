@@ -279,13 +279,11 @@ class TestConfigCommand:
     def config_setup(self, tmp_path, monkeypatch):
         """Setup config with temporary directory."""
         import task_butler.config
-        from task_butler.config import Config
 
         config_dir = tmp_path / ".task-butler"
         config_dir.mkdir(parents=True, exist_ok=True)
 
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_dir / "config.toml")
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
         # Reset global config
         monkeypatch.setattr(task_butler.config, "_config", None)
 

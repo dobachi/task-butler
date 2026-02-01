@@ -27,7 +27,7 @@ def config_show() -> None:
     if not all_config:
         console.print("[dim]No configuration set. Using defaults.[/dim]")
         console.print(f"  storage.format = {config.DEFAULT_FORMAT}")
-        console.print(f"  storage.dir = {config.CONFIG_DIR / 'tasks'}")
+        console.print(f"  storage.dir = {config.config_dir / 'tasks'}")
         return
 
     table = Table(title="Configuration")
@@ -107,7 +107,7 @@ def config_init() -> None:
 
     # Storage directory
     console.print("\n[cyan]Storage Directory:[/cyan]")
-    default_dir = str(config.CONFIG_DIR / "tasks")
+    default_dir = str(config.config_dir / "tasks")
     storage_dir = typer.prompt(
         "Task storage directory",
         default=default_dir,
@@ -152,4 +152,4 @@ def config_init() -> None:
         console.print(f"  obsidian.vault_root = {vault_root}")
     if organization_method != "flat":
         console.print(f"  organization.method = {organization_method}")
-    console.print(f"\nConfig file: {config.CONFIG_PATH}")
+    console.print(f"\nConfig file: {config.config_path}")

@@ -13,19 +13,42 @@ AIProvider = Literal["rule_based", "llama", "openai"]
 AILanguage = Literal["en", "ja"]
 
 
+def get_home_dir() -> Path:
+    """Get Task Butler home directory.
+
+    Precedence:
+    1. TASK_BUTLER_HOME environment variable
+    2. Default: ~/.task-butler
+    """
+    env_home = os.environ.get("TASK_BUTLER_HOME")
+    if env_home:
+        return Path(env_home)
+    return Path.home() / ".task-butler"
+
+
 class Config:
     """Task Butler configuration.
 
     Configuration is loaded with the following precedence (highest to lowest):
     1. CLI options (passed directly to methods)
-    2. Environment variables (TASK_BUTLER_FORMAT)
-    3. Config file (~/.task-butler/config.toml)
+    2. Environment variables (TASK_BUTLER_FORMAT, TASK_BUTLER_HOME)
+    3. Config file (~/.task-butler/config.toml or $TASK_BUTLER_HOME/config.toml)
     4. Default values
+
+    Set TASK_BUTLER_HOME to change the base directory for all data (config, tasks, models).
     """
 
     DEFAULT_FORMAT: StorageFormat = "frontmatter"
-    CONFIG_DIR = Path.home() / ".task-butler"
-    CONFIG_PATH = CONFIG_DIR / "config.toml"
+
+    @property
+    def config_dir(self) -> Path:
+        """Get the config directory (respects TASK_BUTLER_HOME)."""
+        return get_home_dir()
+
+    @property
+    def config_path(self) -> Path:
+        """Get the config file path."""
+        return self.config_dir / "config.toml"
 
     def __init__(self) -> None:
         """Initialize configuration."""
@@ -33,10 +56,10 @@ class Config:
 
     def _load_config_file(self) -> dict:
         """Load configuration from file if it exists."""
-        if not self.CONFIG_PATH.exists():
+        if not self.config_path.exists():
             return {}
         try:
-            with open(self.CONFIG_PATH, "rb") as f:
+            with open(self.config_path, "rb") as f:
                 return tomllib.load(f)
         except (OSError, tomllib.TOMLDecodeError):
             return {}
@@ -89,7 +112,7 @@ class Config:
         if file_dir:
             return Path(file_dir)
 
-        return self.CONFIG_DIR / "tasks"
+        return self.config_dir / "tasks"
 
     def get_value(self, key: str) -> str | None:
         """Get a configuration value by key.
@@ -340,8 +363,8 @@ class Config:
         """Save configuration to file."""
         import tomli_w
 
-        self.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        with open(self.CONFIG_PATH, "wb") as f:
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        with open(self.config_path, "wb") as f:
             tomli_w.dump(self._file_config, f)
 
 

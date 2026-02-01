@@ -16,8 +16,7 @@ class TestConfig:
     @pytest.fixture
     def config(self, config_dir, monkeypatch):
         """Create a Config instance with temporary directory."""
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_dir / "config.toml")
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
         return Config()
 
     def test_default_format(self, config):
@@ -45,8 +44,7 @@ class TestConfig:
         config_path = config_dir / "config.toml"
         config_path.write_text('[storage]\nformat = "hybrid"\n')
 
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_path)
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
 
         # Clear environment variable
         monkeypatch.delenv("TASK_BUTLER_FORMAT", raising=False)
@@ -71,7 +69,7 @@ class TestConfig:
     def test_storage_dir_default(self, config):
         """Test default storage directory."""
         storage_dir = config.get_storage_dir()
-        assert storage_dir == config.CONFIG_DIR / "tasks"
+        assert storage_dir == config.config_dir / "tasks"
 
     def test_storage_dir_cli(self, config, tmp_path):
         """Test CLI storage directory takes precedence."""
@@ -89,8 +87,7 @@ class TestConfig:
 
     def test_config_file_not_exists(self, config_dir, monkeypatch):
         """Test config with non-existent file."""
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_dir / "config.toml")
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
         monkeypatch.delenv("TASK_BUTLER_FORMAT", raising=False)
 
         new_config = Config()
@@ -102,8 +99,7 @@ class TestConfig:
         config_path = config_dir / "config.toml"
         config_path.write_text("invalid toml [[[")
 
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_path)
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
         monkeypatch.delenv("TASK_BUTLER_FORMAT", raising=False)
 
         # Should not raise, just use defaults
@@ -116,8 +112,7 @@ class TestConfig:
         config_path = config_dir / "config.toml"
         config_path.write_text('[storage]\nformat = "hybrid"\n')
 
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_path)
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
 
         new_config = Config()
         assert new_config.get_value("storage.format") == "hybrid"
@@ -165,8 +160,7 @@ class TestConfig:
     def test_save_and_reload(self, config_dir, monkeypatch):
         """Test saving and reloading config."""
         config_dir.mkdir(parents=True, exist_ok=True)
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_dir / "config.toml")
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
 
         config = Config()
         config.set_value("storage.format", "hybrid")
@@ -185,8 +179,7 @@ class TestConfig:
         config_path = config_dir / "config.toml"
         config_path.write_text('[storage]\ndir = "/custom/tasks"\n')
 
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_path)
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
         monkeypatch.delenv("TASK_BUTLER_DIR", raising=False)
 
         from pathlib import Path
@@ -218,8 +211,7 @@ class TestConfig:
         config_path = config_dir / "config.toml"
         config_path.write_text('[obsidian]\nvault_root = "/my/vault"\n')
 
-        monkeypatch.setattr(Config, "CONFIG_DIR", config_dir)
-        monkeypatch.setattr(Config, "CONFIG_PATH", config_path)
+        monkeypatch.setenv("TASK_BUTLER_HOME", str(config_dir))
 
         from pathlib import Path
 
