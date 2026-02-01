@@ -116,6 +116,7 @@ obsidian_app = typer.Typer(
     name="obsidian",
     help="Obsidian Tasks integration commands",
     no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 
