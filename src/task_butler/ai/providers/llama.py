@@ -68,6 +68,10 @@ class LlamaProvider(AIProvider):
     Falls back to RuleBasedProvider if LLM is unavailable.
     """
 
+    # Model families and their prompt formats
+    LLAMA2_MODELS = ["elyza", "llama-2", "japanese-llama"]  # Use [INST] format
+    CHATML_MODELS = ["tinyllama", "phi"]  # Use <|system|> format
+
     def __init__(
         self,
         model_path: str | None = None,
@@ -96,6 +100,31 @@ class LlamaProvider(AIProvider):
         self._llm = None
         self._fallback = RuleBasedProvider()
         self._model_manager = ModelManager()
+
+    def _is_llama2_model(self) -> bool:
+        """Check if current model uses Llama-2 prompt format."""
+        model_lower = self.model_name.lower()
+        return any(family in model_lower for family in self.LLAMA2_MODELS)
+
+    def _format_prompt(self, system_prompt: str, user_prompt: str) -> str:
+        """Format prompt based on model type."""
+        if self._is_llama2_model():
+            # Llama-2 / ELYZA format
+            return f"""[INST] <<SYS>>
+{system_prompt}
+<</SYS>>
+
+{user_prompt} [/INST]"""
+        else:
+            # ChatML format (TinyLlama, Phi, etc.)
+            return f"""<|system|>
+{system_prompt}
+</s>
+<|user|>
+{user_prompt}
+</s>
+<|assistant|>
+"""
 
     def _get_llm(self):
         """Get or initialize the LLM instance."""
@@ -196,14 +225,7 @@ class LlamaProvider(AIProvider):
         system_prompt = p["analyze_system"]
         user_prompt = p["analyze_user"].format(context=context, score=rule_result.score)
 
-        prompt = f"""<|system|>
-{system_prompt}
-</s>
-<|user|>
-{user_prompt}
-</s>
-<|assistant|>
-"""
+        prompt = self._format_prompt(system_prompt, user_prompt)
 
         response = self._generate(prompt, max_tokens=150)
         if response:
@@ -240,14 +262,7 @@ class LlamaProvider(AIProvider):
         system_prompt = p["suggest_system"]
         user_prompt = p["suggest_user"].format(title=task.title, context=context)
 
-        prompt = f"""<|system|>
-{system_prompt}
-</s>
-<|user|>
-{user_prompt}
-</s>
-<|assistant|>
-"""
+        prompt = self._format_prompt(system_prompt, user_prompt)
         response = self._generate(prompt, max_tokens=100)
         if response:
             lines = [line.strip() for line in response.strip().split("\n") if line.strip()]
@@ -296,14 +311,7 @@ class LlamaProvider(AIProvider):
             system_prompt = p["reason_system"]
             user_prompt = p["reason_user"].format(title=task.title, context=context)
 
-            prompt = f"""<|system|>
-{system_prompt}
-</s>
-<|user|>
-{user_prompt}
-</s>
-<|assistant|>
-"""
+            prompt = self._format_prompt(system_prompt, user_prompt)
             response = self._generate(prompt, max_tokens=80)
             reason = f"📋 {suggestion.reason}"  # Default to rule-based with fallback marker
 

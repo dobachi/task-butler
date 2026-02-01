@@ -41,11 +41,22 @@ def get_provider(provider_name: str | None = None) -> AIProvider:
         if is_llama_available():
             llama_config = ai_config.get("llama", {})
             language = ai_config.get("language", "ja")
+            # Convert string values to int (config stores as strings)
+            n_ctx = llama_config.get("n_ctx", 2048)
+            n_gpu_layers = llama_config.get("n_gpu_layers", 0)
+            try:
+                n_ctx = int(n_ctx)
+            except (ValueError, TypeError):
+                n_ctx = 2048
+            try:
+                n_gpu_layers = int(n_gpu_layers)
+            except (ValueError, TypeError):
+                n_gpu_layers = 0
             return LlamaProvider(
                 model_path=llama_config.get("model_path") or None,
                 model_name=llama_config.get("model_name", "tinyllama-1.1b"),
-                n_ctx=llama_config.get("n_ctx", 2048),
-                n_gpu_layers=llama_config.get("n_gpu_layers", 0),
+                n_ctx=n_ctx,
+                n_gpu_layers=n_gpu_layers,
                 language=language,
             )
         # Fall back to rule-based if llama not available
