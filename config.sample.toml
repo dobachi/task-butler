@@ -45,3 +45,56 @@ format = "frontmatter"
 #
 # # After enabling kanban, run: task-butler organize
 # # to move existing tasks to their status directories
+
+# ============================================
+# AI Settings
+# ============================================
+[ai]
+# AI provider: "rule_based" (default), "llama", or "openai"
+provider = "rule_based"
+
+# Output language: "en" or "ja" (default)
+language = "ja"
+
+# LLM settings (when provider = "llama")
+[ai.llama]
+model_name = "tinyllama-1.1b"    # Model name (use 'tb ai models' to list)
+# model_path = ""               # Or specify direct path to GGUF file
+n_ctx = 2048                    # Context window size
+n_gpu_layers = 0                # GPU layers (set to 99 for full GPU)
+
+# Analysis weight settings
+[ai.analysis]
+weight_deadline = 0.30          # Deadline urgency weight
+weight_dependencies = 0.25      # Dependency weight
+weight_effort = 0.20            # Effort/complexity weight
+weight_staleness = 0.15         # Task age weight
+weight_priority = 0.10          # Manual priority weight
+
+# Daily planning settings
+[ai.planning]
+default_hours = 8.0             # Default working hours per day
+buffer_ratio = 0.1              # Buffer time ratio (10%)
+morning_hours = 4.0             # Hours considered "morning"
+start_time = "09:00"            # Work start time
+
+# ============================================
+# Custom Prompts (Optional)
+# ============================================
+# Customize AI prompts by language. Available placeholders:
+#   {context} - Task details (title, priority, status, deadline, etc.)
+#   {score}   - Rule-based priority score (0-100)
+#   {title}   - Task title
+#
+# Use 'tb ai prompts' to see all available prompt keys
+# Use 'tb ai prompts -p' to see all placeholders
+
+# Japanese prompts
+# [ai.prompts.ja]
+# analyze_system = "あなたは優秀なタスク管理の専門家です。"
+# analyze_user = "以下のタスクを分析してください:\n\n{context}\n\nスコア: {score}/100"
+
+# English prompts
+# [ai.prompts.en]
+# analyze_system = "You are an expert task management assistant."
+# analyze_user = "Analyze this task:\n\n{context}\n\nScore: {score}/100"

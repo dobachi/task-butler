@@ -118,7 +118,8 @@ class Config:
         """Get a configuration value by key.
 
         Args:
-            key: Config key in dot notation (e.g., "storage.format", "organization.kanban.backlog")
+            key: Config key in dot notation (e.g., "storage.format", "organization.kanban.backlog",
+                 "ai.prompts.ja.analyze_system")
 
         Returns:
             The value if set, None otherwise
@@ -130,29 +131,41 @@ class Config:
         elif len(parts) == 3:
             section, subsection, name = parts
             return self._file_config.get(section, {}).get(subsection, {}).get(name)
+        elif len(parts) == 4:
+            section, subsection, subsubsection, name = parts
+            return (
+                self._file_config.get(section, {})
+                .get(subsection, {})
+                .get(subsubsection, {})
+                .get(name)
+            )
         return None
 
     def set_value(self, key: str, value: str) -> None:
         """Set a configuration value.
 
         Args:
-            key: Config key in dot notation (e.g., "storage.format", "organization.kanban.backlog")
+            key: Config key in dot notation (e.g., "storage.format", "organization.kanban.backlog",
+                 "ai.prompts.ja.analyze_system")
             value: Value to set
 
         Raises:
             ValueError: If key is invalid or value is not allowed
         """
         parts = key.split(".")
-        if len(parts) not in (2, 3):
+        if len(parts) not in (2, 3, 4):
             raise ValueError(f"Invalid key: {key}")
 
         # Validate and set value
         if len(parts) == 2:
             section, name = parts
             self._validate_and_set_2level(section, name, value)
-        else:
+        elif len(parts) == 3:
             section, subsection, name = parts
             self._validate_and_set_3level(section, subsection, name, value)
+        else:
+            section, subsection, subsubsection, name = parts
+            self._validate_and_set_4level(section, subsection, subsubsection, name, value)
 
     def _validate_and_set_2level(self, section: str, name: str, value: str) -> None:
         """Validate and set a 2-level config key."""
@@ -229,6 +242,10 @@ class Config:
                 pass  # Valid planning settings
             else:
                 raise ValueError(f"Unknown ai.planning key: {name}")
+        elif section == "ai" and subsection == "prompts":
+            # Prompts have language sub-keys (ja, en) which need 4-level handling
+            # This 3-level case handles direct prompt keys if needed
+            pass  # Allow any prompt key
         else:
             raise ValueError(f"Unknown section: {section}.{subsection}")
 
@@ -238,6 +255,28 @@ class Config:
         if subsection not in self._file_config[section]:
             self._file_config[section][subsection] = {}
         self._file_config[section][subsection][name] = value
+
+    def _validate_and_set_4level(
+        self, section: str, subsection: str, subsubsection: str, name: str, value: str
+    ) -> None:
+        """Validate and set a 4-level config key."""
+        if section == "ai" and subsection == "prompts":
+            if subsubsection not in ("en", "ja"):
+                raise ValueError(
+                    f"Invalid language: {subsubsection}. Must be 'en' or 'ja'"
+                )
+            # Allow any prompt key
+        else:
+            raise ValueError(f"Unknown section: {section}.{subsection}.{subsubsection}")
+
+        # Update in-memory config
+        if section not in self._file_config:
+            self._file_config[section] = {}
+        if subsection not in self._file_config[section]:
+            self._file_config[section][subsection] = {}
+        if subsubsection not in self._file_config[section][subsection]:
+            self._file_config[section][subsection][subsubsection] = {}
+        self._file_config[section][subsection][subsubsection][name] = value
 
     def get_all(self) -> dict:
         """Get all configuration values.

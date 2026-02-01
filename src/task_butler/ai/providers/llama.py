@@ -5,49 +5,18 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from ..base import AIProvider, AnalysisResult, PlanResult, SuggestionResult
+from ..base import (
+    AIProvider,
+    AnalysisResult,
+    HolisticResult,
+    PlanResult,
+    PortfolioInsight,
+    SuggestionResult,
+    TaskWithReason,
+)
 from ..model_manager import DEFAULT_MODEL, ModelManager
+from ..prompts import PromptManager
 from .rule_based import RuleBasedProvider
-
-# Language-specific prompt templates
-PROMPTS = {
-    "en": {
-        "analyze_system": "You are a task management assistant. Analyze the task and explain why it should be prioritized.\nBe concise (1-2 sentences).",
-        "analyze_user": "Analyze this task and explain its priority:\n\n{context}\n\nCurrent priority score: {score}/100\n\nWhy should this task be prioritized? Give a brief explanation:",
-        "suggest_system": "You are a task assistant. Give 1-2 brief action suggestions for the task.\nBe specific and actionable.",
-        "suggest_user": "Task: {title}\n{context}\n\nGive 1-2 brief suggestions (one per line):",
-        "reason_system": "You are a task assistant. Explain briefly why this task should be done now.\nOne sentence only.",
-        "reason_user": "Task: {title}\n{context}\n\nWhy do this task now?",
-        "task_name": "Task",
-        "priority": "Priority",
-        "status": "Status",
-        "description": "Description",
-        "deadline_overdue": "Deadline: {days} days overdue",
-        "deadline_today": "Deadline: today",
-        "deadline_days": "Deadline: in {days} days",
-        "estimated_hours": "Estimated time: {hours} hours",
-        "blocking": "Blocking: {count} tasks not completed",
-        "blocked_by": "Waiting for this task: {count} tasks",
-    },
-    "ja": {
-        "analyze_system": "あなたはタスク管理アシスタントです。タスクを分析し、なぜ優先すべきかを説明してください。\n簡潔に（1-2文で）書いてください。",
-        "analyze_user": "このタスクを分析し、優先度の理由を説明してください：\n\n{context}\n\n現在の優先度スコア: {score}/100\n\nなぜこのタスクを優先すべきですか？簡潔に説明してください：",
-        "suggest_system": "あなたはタスク管理アシスタントです。タスクに対する1-2個の具体的なアクション提案をしてください。\n具体的で実行可能なものにしてください。",
-        "suggest_user": "タスク: {title}\n{context}\n\n1-2個の提案を書いてください（1行ずつ）：",
-        "reason_system": "あなたはタスクアシスタントです。このタスクを今やるべき理由を簡潔に説明してください。\n一文のみで。",
-        "reason_user": "タスク: {title}\n{context}\n\nなぜ今このタスクをやるべき？",
-        "task_name": "タスク名",
-        "priority": "優先度",
-        "status": "ステータス",
-        "description": "説明",
-        "deadline_overdue": "期限: {days}日超過",
-        "deadline_today": "期限: 今日",
-        "deadline_days": "期限: {days}日後",
-        "estimated_hours": "見積時間: {hours}時間",
-        "blocking": "ブロック中: {count}個のタスクが未完了",
-        "blocked_by": "このタスクを待っている: {count}個",
-    },
-}
 
 if TYPE_CHECKING:
     from ...models.task import Task
@@ -100,6 +69,7 @@ class LlamaProvider(AIProvider):
         self._llm = None
         self._fallback = RuleBasedProvider()
         self._model_manager = ModelManager()
+        self._prompt_manager = PromptManager(self.language)
 
     def _is_llama2_model(self) -> bool:
         """Check if current model uses Llama-2 prompt format."""
@@ -220,10 +190,11 @@ class LlamaProvider(AIProvider):
         # Build context about the task
         context = self._build_task_context(task, all_tasks)
 
-        # Get language-specific prompts
-        p = PROMPTS[self.language]
-        system_prompt = p["analyze_system"]
-        user_prompt = p["analyze_user"].format(context=context, score=rule_result.score)
+        # Get prompts from manager
+        system_prompt = self._prompt_manager.get("analyze_system")
+        user_prompt = self._prompt_manager.format(
+            "analyze_user", context=context, score=rule_result.score
+        )
 
         prompt = self._format_prompt(system_prompt, user_prompt)
 
@@ -258,9 +229,10 @@ class LlamaProvider(AIProvider):
 
     def _generate_suggestions_llm(self, task: "Task", context: str) -> list[str]:
         """Generate action suggestions using LLM."""
-        p = PROMPTS[self.language]
-        system_prompt = p["suggest_system"]
-        user_prompt = p["suggest_user"].format(title=task.title, context=context)
+        system_prompt = self._prompt_manager.get("suggest_system")
+        user_prompt = self._prompt_manager.format(
+            "suggest_user", title=task.title, context=context
+        )
 
         prompt = self._format_prompt(system_prompt, user_prompt)
         response = self._generate(prompt, max_tokens=100)
@@ -300,16 +272,16 @@ class LlamaProvider(AIProvider):
                 for s in rule_suggestions
             ]
 
-        p = PROMPTS[self.language]
-
         # Enhance each suggestion with LLM reasoning
         enhanced_suggestions = []
         for suggestion in rule_suggestions[:count]:
             task = suggestion.task
             context = self._build_task_context(task, tasks)
 
-            system_prompt = p["reason_system"]
-            user_prompt = p["reason_user"].format(title=task.title, context=context)
+            system_prompt = self._prompt_manager.get("reason_system")
+            user_prompt = self._prompt_manager.format(
+                "reason_user", title=task.title, context=context
+            )
 
             prompt = self._format_prompt(system_prompt, user_prompt)
             response = self._generate(prompt, max_tokens=80)
@@ -354,41 +326,245 @@ class LlamaProvider(AIProvider):
             tasks, working_hours, start_time, morning_hours, buffer_ratio
         )
 
+    def analyze_portfolio(
+        self,
+        tasks: list["Task"],
+        max_tasks: int = 20,
+    ) -> HolisticResult:
+        """Analyze all tasks holistically using LLM.
+
+        Args:
+            tasks: List of open tasks to analyze
+            max_tasks: Maximum number of tasks to include (context window limit)
+
+        Returns:
+            HolisticResult with portfolio-level insights
+        """
+        if not tasks:
+            return HolisticResult(
+                overall_assessment="分析対象のタスクがありません。"
+                if self.language == "ja"
+                else "No tasks to analyze.",
+                total_tasks=0,
+                analyzed_tasks=0,
+            )
+
+        # Sort by priority score and take top N tasks
+        analyzed_tasks = tasks[:max_tasks]
+        total_tasks = len(tasks)
+
+        # Try LLM analysis
+        llm = self._get_llm()
+        if llm is None:
+            return self._fallback.analyze_portfolio(tasks, max_tasks)
+
+        # Build compact task summary
+        task_list = self._build_portfolio_summary(analyzed_tasks)
+
+        # Get prompts
+        system_prompt = self._prompt_manager.get("portfolio_system")
+        user_prompt = self._prompt_manager.format(
+            "portfolio_user",
+            task_count=len(analyzed_tasks),
+            task_list=task_list,
+        )
+
+        prompt = self._format_prompt(system_prompt, user_prompt)
+        response = self._generate(prompt, max_tokens=1200)
+
+        if response:
+            result = self._parse_portfolio_response(response, analyzed_tasks)
+            result.total_tasks = total_tasks
+            result.analyzed_tasks = len(analyzed_tasks)
+
+            # Get rule-based scores for reliable scoring
+            analyses = {t.id: self._fallback.analyze_task(t, tasks) for t in analyzed_tasks}
+
+            # Get LLM reasons (stored in _parse_portfolio_response)
+            llm_reasons = getattr(result, "_llm_reasons", {})
+
+            # Build ranked_tasks with LLM reasons (fallback to rule-based if no LLM reason)
+            result.ranked_tasks = [
+                TaskWithReason(
+                    task_id=tid,
+                    score=analyses[tid].score if tid in analyses else 50.0,
+                    reason=llm_reasons.get(tid) or (
+                        analyses[tid].reasoning if tid in analyses else "分析データなし"
+                    ),
+                )
+                for tid in result.recommended_order
+            ]
+
+            # Add warning if tasks were truncated
+            if total_tasks > max_tasks:
+                warning = (
+                    f"タスク数が多いため、上位{max_tasks}件のみ分析しました（全{total_tasks}件中）"
+                    if self.language == "ja"
+                    else f"Analyzed top {max_tasks} tasks out of {total_tasks} due to context limit"
+                )
+                result.warnings.insert(0, warning)
+
+            return result
+
+        # Fallback if LLM fails
+        return self._fallback.analyze_portfolio(tasks, max_tasks)
+
+    def _build_portfolio_summary(self, tasks: list["Task"]) -> str:
+        """Build a compact summary of all tasks for portfolio analysis."""
+        from datetime import datetime
+
+        lines = []
+        for t in tasks:
+            parts = [f"[{t.short_id}] {t.title}"]
+
+            # Priority
+            parts.append(f"({t.priority.value})")
+
+            # Deadline
+            if t.due_date:
+                days = (t.due_date - datetime.now()).days
+                if days < 0:
+                    parts.append(f"期限{-days}日超過" if self.language == "ja" else f"{-days}d overdue")
+                elif days == 0:
+                    parts.append("今日期限" if self.language == "ja" else "due today")
+                elif days <= 7:
+                    parts.append(f"{days}日後" if self.language == "ja" else f"in {days}d")
+
+            # Dependencies
+            if t.dependencies:
+                parts.append(
+                    f"依存{len(t.dependencies)}件"
+                    if self.language == "ja"
+                    else f"deps:{len(t.dependencies)}"
+                )
+
+            lines.append(" ".join(parts))
+
+        return "\n".join(lines)
+
+    def _parse_portfolio_response(
+        self, response: str, tasks: list["Task"]
+    ) -> HolisticResult:
+        """Parse LLM response into HolisticResult."""
+        import json
+
+        task_map = {t.short_id: t.id for t in tasks}
+
+        # Try to extract JSON from response
+        result = HolisticResult()
+        llm_reasons: dict[str, str] = {}  # task_id -> reason from LLM
+
+        try:
+            # Find JSON in response
+            json_match = re.search(r"\{[\s\S]*\}", response)
+            if json_match:
+                data = json.loads(json_match.group())
+
+                # Parse recommended order (supports both old and new format)
+                if "order" in data and isinstance(data["order"], list):
+                    for item in data["order"]:
+                        if isinstance(item, dict):
+                            # New format: {"id": "...", "reason": "..."}
+                            tid = item.get("id", "")
+                            reason = item.get("reason", "")
+                            full_id = task_map.get(tid, tid)
+                            if full_id:
+                                result.recommended_order.append(full_id)
+                                if reason:
+                                    llm_reasons[full_id] = reason
+                        elif isinstance(item, str):
+                            # Old format: just task ID
+                            full_id = task_map.get(item, item)
+                            if full_id:
+                                result.recommended_order.append(full_id)
+
+                # Parse groups
+                if "groups" in data and isinstance(data["groups"], list):
+                    for group in data["groups"]:
+                        if isinstance(group, list) and len(group) >= 2:
+                            name = str(group[0])
+                            task_ids = [
+                                task_map.get(tid, tid)
+                                for tid in group[1]
+                                if isinstance(group[1], list)
+                            ]
+                            if task_ids:
+                                result.task_groups.append((name, task_ids))
+
+                # Parse insights
+                if "insights" in data and isinstance(data["insights"], list):
+                    for insight in data["insights"]:
+                        if insight:
+                            result.insights.append(
+                                PortfolioInsight(
+                                    insight_type="general",
+                                    description=str(insight),
+                                )
+                            )
+
+                # Parse warnings
+                if "warnings" in data and isinstance(data["warnings"], list):
+                    result.warnings = [str(w) for w in data["warnings"] if w]
+
+                # Parse assessment
+                if "assessment" in data:
+                    result.overall_assessment = str(data["assessment"])
+
+        except (json.JSONDecodeError, KeyError, TypeError):
+            # If JSON parsing fails, treat response as free-form text
+            result.overall_assessment = response.strip()
+
+        # Fallback: if no order parsed, use original order
+        if not result.recommended_order:
+            result.recommended_order = [t.id for t in tasks]
+
+        # Fallback: if no assessment, generate basic one
+        if not result.overall_assessment:
+            if self.language == "ja":
+                result.overall_assessment = f"{len(tasks)}件のタスクを分析しました。"
+            else:
+                result.overall_assessment = f"Analyzed {len(tasks)} tasks."
+
+        # Store LLM reasons in result for later use
+        result._llm_reasons = llm_reasons  # type: ignore[attr-defined]
+
+        return result
+
     def _build_task_context(self, task: "Task", all_tasks: list["Task"]) -> str:
         """Build context string for a task."""
-        p = PROMPTS[self.language]
+        pm = self._prompt_manager
 
         lines = [
-            f"{p['task_name']}: {task.title}",
-            f"{p['priority']}: {task.priority.value}",
-            f"{p['status']}: {task.status.value}",
+            f"{pm.get('task_name')}: {task.title}",
+            f"{pm.get('priority')}: {task.priority.value}",
+            f"{pm.get('status')}: {task.status.value}",
         ]
 
         if task.description:
-            lines.append(f"{p['description']}: {task.description}")
+            lines.append(f"{pm.get('description')}: {task.description}")
 
         if task.due_date:
             from datetime import datetime
 
             days = (task.due_date - datetime.now()).days
             if days < 0:
-                lines.append(p["deadline_overdue"].format(days=days * -1))
+                lines.append(pm.format("deadline_overdue", days=days * -1))
             elif days == 0:
-                lines.append(p["deadline_today"])
+                lines.append(pm.get("deadline_today"))
             else:
-                lines.append(p["deadline_days"].format(days=days))
+                lines.append(pm.format("deadline_days", days=days))
 
         if task.estimated_hours:
-            lines.append(p["estimated_hours"].format(hours=task.estimated_hours))
+            lines.append(pm.format("estimated_hours", hours=task.estimated_hours))
 
         # Check dependencies
         blocking = [t for t in all_tasks if t.id in task.dependencies and t.is_open]
         if blocking:
-            lines.append(p["blocking"].format(count=len(blocking)))
+            lines.append(pm.format("blocking", count=len(blocking)))
 
         blocked_by = [t for t in all_tasks if task.id in t.dependencies and t.is_open]
         if blocked_by:
-            lines.append(p["blocked_by"].format(count=len(blocked_by)))
+            lines.append(pm.format("blocked_by", count=len(blocked_by)))
 
         return "\n".join(lines)
 

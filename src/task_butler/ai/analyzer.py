@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .base import AIProvider, AnalysisResult
+from .base import AIProvider, AnalysisResult, HolisticResult
 
 if TYPE_CHECKING:
     from ..models.task import Task
@@ -90,3 +90,41 @@ class TaskAnalyzer:
                 top.append((task_map[result.task_id], result))
 
         return top
+
+    def analyze_holistic(
+        self,
+        tasks: list["Task"],
+        max_tasks: int = 20,
+        include_closed: bool = False,
+    ) -> HolisticResult:
+        """Analyze all tasks holistically for cross-task insights.
+
+        This method provides portfolio-level analysis including:
+        - Recommended execution order
+        - Task groupings
+        - Cross-task insights (blockers, bottlenecks, etc.)
+        - Overall assessment and warnings
+
+        Args:
+            tasks: List of tasks to analyze
+            max_tasks: Maximum tasks to include (context window limit)
+            include_closed: Whether to include done/cancelled tasks
+
+        Returns:
+            HolisticResult with portfolio-level insights
+        """
+        # Filter tasks
+        if include_closed:
+            target_tasks = tasks
+        else:
+            target_tasks = [t for t in tasks if t.is_open]
+
+        if not target_tasks:
+            return HolisticResult(
+                overall_assessment="分析対象のオープンタスクがありません。",
+                total_tasks=len(tasks),
+                analyzed_tasks=0,
+            )
+
+        # Delegate to provider
+        return self.provider.analyze_portfolio(target_tasks, max_tasks)

@@ -137,3 +137,114 @@ def delete_model(
     else:
         console.print(f"[red]Failed to delete: {model_name}[/red]")
         raise typer.Exit(1)
+
+
+@ai_app.command(name="prompts")
+def show_prompts(
+    key: str = typer.Argument(None, help="Specific prompt key to show"),
+    show_placeholders: bool = typer.Option(
+        False, "--show-placeholders", "-p", help="Show placeholder information"
+    ),
+    language: str = typer.Option(None, "--language", "-l", help="Language (en/ja)"),
+    show_default: bool = typer.Option(
+        False, "--default", "-d", help="Show default prompt (ignore customizations)"
+    ),
+) -> None:
+    """Show AI prompts and their placeholders.
+
+    Examples:
+        tb ai prompts                    # List all prompts
+        tb ai prompts analyze_system     # Show specific prompt
+        tb ai prompts -p                 # Show all placeholders
+        tb ai prompts analyze_user -p    # Show placeholders for a prompt
+    """
+    from ...ai.prompts import (
+        DEFAULT_PROMPTS,
+        PLACEHOLDER_DOCS,
+        PROMPT_CATEGORIES,
+        PromptManager,
+    )
+    from ...config import get_config
+
+    # Determine language
+    if language is None:
+        language = get_config().get_ai_language()
+    if language not in ("en", "ja"):
+        language = "ja"
+
+    manager = PromptManager(language)
+
+    # Show placeholder documentation
+    if show_placeholders and key is None:
+        table = Table(title="Available Placeholders")
+        table.add_column("Placeholder", style="cyan")
+        table.add_column("Description")
+
+        for name, info in PLACEHOLDER_DOCS.items():
+            desc_key = f"description_{language}"
+            desc = info.get(desc_key, info.get("description_ja", ""))
+            table.add_row(f"{{{name}}}", desc)
+
+        console.print(table)
+        console.print()
+        console.print("[dim]Use placeholders in your custom prompts in config.toml[/dim]")
+        return
+
+    # Show specific prompt
+    if key:
+        if key not in manager.list_keys():
+            console.print(f"[red]Unknown prompt key: {key}[/red]")
+            console.print()
+            console.print("Available keys:")
+            for k in manager.list_keys():
+                console.print(f"  - {k}")
+            raise typer.Exit(1)
+
+        if show_default:
+            prompt_text = PromptManager.get_default_prompt(key, language)
+            console.print(f"[bold]Default prompt: {key}[/bold] [dim](language: {language})[/dim]")
+        else:
+            prompt_text = manager.get(key)
+            is_custom = manager.is_customized(key)
+            status = "[yellow](customized)[/yellow]" if is_custom else "[dim](default)[/dim]"
+            console.print(f"[bold]Prompt: {key}[/bold] {status}")
+
+        console.print()
+        console.print(prompt_text)
+
+        if show_placeholders:
+            placeholders = manager.list_placeholders(key)
+            if placeholders:
+                console.print()
+                console.print("[bold]Placeholders:[/bold]")
+                for ph in placeholders:
+                    desc = PromptManager.get_placeholder_info(ph, language)
+                    console.print(f"  {{{ph}}}: {desc}")
+        return
+
+    # Show all prompts grouped by category
+    console.print(f"[bold]AI Prompts[/bold] [dim](language: {language})[/dim]")
+    console.print()
+
+    for category_key, category in PROMPT_CATEGORIES.items():
+        desc_key = f"description_{language}"
+        category_desc = category.get(desc_key, category.get("description_ja", ""))
+        console.print(f"[bold cyan]{category_desc}[/bold cyan]")
+
+        for prompt_key in category["keys"]:
+            is_custom = manager.is_customized(prompt_key)
+            status = " [yellow]*[/yellow]" if is_custom else ""
+            prompt_text = manager.get(prompt_key)
+            # Truncate long prompts
+            if len(prompt_text) > 60:
+                prompt_text = prompt_text[:57] + "..."
+            # Replace newlines for display
+            prompt_text = prompt_text.replace("\n", "\\n")
+            console.print(f"  [cyan]{prompt_key}[/cyan]{status}: {prompt_text}")
+
+        console.print()
+
+    console.print("[dim]* = customized in config.toml[/dim]")
+    console.print()
+    console.print("[dim]Use 'tb ai prompts <key>' to see full prompt[/dim]")
+    console.print("[dim]Use 'tb ai prompts -p' to see available placeholders[/dim]")

@@ -6,6 +6,7 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 console = Console()
@@ -17,10 +18,19 @@ def analyze_tasks(
         None, help="Task ID to analyze (analyzes all if not specified)"
     ),
     count: int = typer.Option(10, "--count", "-n", help="Number of tasks to show"),
+    individual: bool = typer.Option(
+        False, "--individual", "-i", help="Individual analysis mode (analyze each task separately)"
+    ),
+    limit: int = typer.Option(
+        20, "--limit", "-l", help="Maximum tasks for holistic analysis (default: 20)"
+    ),
     save: bool = typer.Option(False, "--save", "-s", help="Save analysis results to tasks"),
-    table: bool = typer.Option(False, "--table", "-t", help="Show as table"),
+    table: bool = typer.Option(False, "--table", "-t", help="Show as table (individual mode only)"),
 ) -> None:
-    """Analyze tasks and show priority scores with reasoning.
+    """Analyze tasks and show priority insights.
+
+    Default mode: Holistic analysis (cross-task insights)
+    Use --individual / -i for per-task analysis
 
     Uses AI to analyze task priority based on:
     - Deadline urgency
@@ -61,7 +71,7 @@ def analyze_tasks(
         raise typer.Exit(0)
 
     if task_id:
-        # Analyze single task
+        # Analyze single task (always individual mode)
         task = manager.get(task_id)
         if not task:
             console.print(f"[red]Task not found: {task_id}[/red]")
@@ -75,8 +85,9 @@ def analyze_tasks(
             note = f"AI分析スコア: {result.score}/100 - {result.reasoning}"
             manager.add_note(task.id, note)
             console.print("[green]✓[/green] Analysis saved to task notes")
-    else:
-        # Analyze all tasks
+
+    elif individual:
+        # Individual analysis mode (legacy behavior)
         results = analyzer.analyze_all(all_tasks)[:count]
 
         if table:
@@ -92,6 +103,11 @@ def analyze_tasks(
                     note = f"AI分析スコア: {result.score}/100 - {result.reasoning}"
                     manager.add_note(result.task_id, note)
             console.print(f"\n[green]✓[/green] Analysis saved to {len(results)} tasks")
+
+    else:
+        # Holistic analysis mode (default)
+        holistic_result = analyzer.analyze_holistic(all_tasks, max_tasks=limit)
+        _show_holistic_analysis(holistic_result, all_tasks)
 
 
 def _show_single_analysis(task, result) -> None:
@@ -150,7 +166,7 @@ def _show_analysis_list(results, all_tasks) -> None:
     }
 
     console.print()
-    console.print("[bold]📊 タスク分析結果[/bold]")
+    console.print("[bold]📊 タスク分析結果[/bold] [dim](個別分析モード)[/dim]")
     console.print()
 
     for i, result in enumerate(results, 1):
@@ -191,7 +207,7 @@ def _show_analysis_table(results, all_tasks) -> None:
         Priority.LOWEST: "lowest",
     }
 
-    table = Table(title="📊 タスク分析結果")
+    table = Table(title="📊 タスク分析結果 (個別分析モード)")
     table.add_column("#", style="dim", width=3)
     table.add_column("スコア", justify="right", width=8)
     table.add_column("優先度", width=8)
@@ -225,3 +241,97 @@ def _show_analysis_table(results, all_tasks) -> None:
 
     console.print()
     console.print(table)
+
+
+def _show_holistic_analysis(result, all_tasks) -> None:
+    """Show holistic analysis results."""
+    task_map = {t.id: t for t in all_tasks}
+
+    console.print()
+    console.print("[bold]📊 タスク全体分析[/bold]")
+    console.print()
+
+    # Show warnings first
+    if result.warnings:
+        for warning in result.warnings:
+            console.print(f"[yellow]⚠️ {warning}[/yellow]")
+        console.print()
+
+    # Insights - show before assessment for context
+    if result.insights:
+        console.print("[bold cyan]【重要な洞察】[/bold cyan]")
+        sorted_insights = sorted(result.insights, key=lambda x: x.priority)
+        for insight in sorted_insights[:5]:
+            icon = "💡"
+            if insight.insight_type == "warning":
+                icon = "⚠️"
+            elif insight.insight_type == "blocker":
+                icon = "🚫"
+            elif insight.insight_type == "sequence":
+                icon = "📋"
+            elif insight.insight_type == "optimization":
+                icon = "⏰"
+            console.print(f"  {icon} {insight.description}")
+        console.print()
+
+    # Overall assessment
+    if result.overall_assessment:
+        console.print(Panel(result.overall_assessment, title="全体評価", border_style="blue"))
+        console.print()
+
+    # Recommended order with reasons (prefer ranked_tasks if available)
+    if result.ranked_tasks:
+        console.print("[bold cyan]【推奨実行順序】[/bold cyan]")
+        for i, ranked in enumerate(result.ranked_tasks[:10], 1):
+            task = task_map.get(ranked.task_id)
+            if task:
+                # Score color
+                if ranked.score >= 80:
+                    score_color = "red"
+                elif ranked.score >= 60:
+                    score_color = "yellow"
+                elif ranked.score >= 40:
+                    score_color = "green"
+                else:
+                    score_color = "dim"
+
+                console.print(
+                    f"  {i}. [{score_color}]{ranked.score:.0f}点[/{score_color}] "
+                    f"[bold]{task.title}[/bold] ({task.short_id})"
+                )
+                console.print(f"     [dim]→ {ranked.reason}[/dim]")
+        if len(result.ranked_tasks) > 10:
+            console.print(f"  [dim]... 他 {len(result.ranked_tasks) - 10} 件[/dim]")
+        console.print()
+    elif result.recommended_order:
+        # Fallback to simple list
+        console.print("[bold cyan]【推奨実行順序】[/bold cyan]")
+        for i, task_id in enumerate(result.recommended_order[:10], 1):
+            task = task_map.get(task_id)
+            if task:
+                console.print(f"  {i}. [{task.short_id}] {task.title}")
+        if len(result.recommended_order) > 10:
+            console.print(f"  [dim]... 他 {len(result.recommended_order) - 10} 件[/dim]")
+        console.print()
+
+    # Task groups
+    if result.task_groups:
+        console.print("[bold cyan]【グルーピング提案】[/bold cyan]")
+        for group_name, task_ids in result.task_groups[:5]:
+            task_titles = []
+            for tid in task_ids[:3]:
+                task = task_map.get(tid)
+                if task:
+                    task_titles.append(task.title)
+            titles_str = ", ".join(task_titles)
+            if len(task_ids) > 3:
+                titles_str += f" 他{len(task_ids) - 3}件"
+            console.print(f"  📦 {group_name}: {titles_str}")
+        console.print()
+
+    # Footer with stats
+    console.print(
+        f"[dim]分析対象: {result.analyzed_tasks}/{result.total_tasks} タスク[/dim]"
+    )
+    console.print()
+    console.print("[dim]個別分析は 'tb analyze --individual' で実行できます[/dim]")

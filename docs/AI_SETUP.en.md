@@ -206,6 +206,73 @@ pyenv local 3.12.0
 
 ---
 
+## Prompt Customization
+
+You can customize AI responses by overriding prompts in `config.toml`.
+
+### View Available Prompts
+
+```bash
+# List all prompts
+tb ai prompts
+
+# Show a specific prompt
+tb ai prompts analyze_system
+
+# Show placeholder information
+tb ai prompts -p
+
+# Show placeholders for a specific prompt
+tb ai prompts analyze_user -p
+```
+
+### Available Prompt Keys
+
+| Key | Purpose | Placeholders |
+|-----|---------|--------------|
+| `analyze_system` | System prompt for task analysis | None |
+| `analyze_user` | User prompt for task analysis | `{context}`, `{score}` |
+| `suggest_system` | System prompt for suggestions | None |
+| `suggest_user` | User prompt for suggestions | `{title}`, `{context}` |
+| `reason_system` | System prompt for reasoning | None |
+| `reason_user` | User prompt for reasoning | `{title}`, `{context}` |
+
+### Available Placeholders
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{context}` | Task details (title, priority, deadline, etc.) |
+| `{score}` | Rule-based priority score (0-100) |
+| `{title}` | Task title |
+
+### Custom Prompt Configuration Example
+
+`~/.task-butler/config.toml`:
+
+```toml
+[ai.prompts.en]
+analyze_system = "You are an expert task manager. Analyze tasks and explain priority."
+analyze_user = "Analyze the following task:\n\n{context}\n\nPriority score: {score}/100\n\nExplain in 1-2 sentences:"
+
+[ai.prompts.ja]
+analyze_system = "あなたは優秀なタスク管理の専門家です。タスクを分析し、優先度の理由を説明してください。"
+analyze_user = "以下のタスクを分析してください：\n\n{context}\n\n優先度スコア: {score}/100\n\n理由を1-2文で説明してください："
+```
+
+### Verification
+
+```bash
+# Check if custom prompt is loaded
+tb ai prompts analyze_system
+
+# Run AI analysis
+tb analyze -n 1
+```
+
+Customized prompts are marked with `*` in the prompt list.
+
+---
+
 ## Related Links
 
 - [llama-cpp-python GitHub](https://github.com/abetlen/llama-cpp-python)

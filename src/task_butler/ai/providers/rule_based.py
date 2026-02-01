@@ -5,7 +5,16 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from ..base import AIProvider, AnalysisResult, PlanResult, SuggestionResult, TimeSlot
+from ..base import (
+    AIProvider,
+    AnalysisResult,
+    HolisticResult,
+    PlanResult,
+    PortfolioInsight,
+    SuggestionResult,
+    TaskWithReason,
+    TimeSlot,
+)
 
 if TYPE_CHECKING:
     from ...models.task import Task
@@ -417,5 +426,157 @@ class RuleBasedProvider(AIProvider):
             elif task_hours <= hours_available:
                 # Task fits by itself, include it
                 result.append(task)
+
+        return result
+
+    def analyze_portfolio(
+        self,
+        tasks: list["Task"],
+        max_tasks: int = 20,
+    ) -> HolisticResult:
+        """Analyze all tasks holistically using rule-based heuristics.
+
+        Args:
+            tasks: List of open tasks to analyze
+            max_tasks: Maximum number of tasks to include
+
+        Returns:
+            HolisticResult with portfolio-level insights
+        """
+        if not tasks:
+            return HolisticResult(
+                overall_assessment="分析対象のタスクがありません。",
+                total_tasks=0,
+                analyzed_tasks=0,
+            )
+
+        # Take top tasks by priority
+        analyzed_tasks = tasks[:max_tasks]
+        total_tasks = len(tasks)
+
+        # Analyze each task
+        analyses = {t.id: self.analyze_task(t, tasks) for t in analyzed_tasks}
+
+        # Sort by score to get recommended order
+        sorted_tasks = sorted(
+            analyzed_tasks, key=lambda t: analyses[t.id].score, reverse=True
+        )
+        recommended_order = [t.id for t in sorted_tasks]
+
+        # Build ranked tasks with reasons
+        ranked_tasks = [
+            TaskWithReason(
+                task_id=t.id,
+                score=analyses[t.id].score,
+                reason=analyses[t.id].reasoning,
+            )
+            for t in sorted_tasks
+        ]
+
+        # Build insights
+        insights: list[PortfolioInsight] = []
+        warnings: list[str] = []
+
+        # 1. Check for overdue tasks
+        overdue_tasks = [t for t in analyzed_tasks if t.due_date and t.due_date < datetime.now()]
+        if overdue_tasks:
+            insights.append(
+                PortfolioInsight(
+                    insight_type="warning",
+                    related_tasks=[t.id for t in overdue_tasks],
+                    description=f"{len(overdue_tasks)}件のタスクが期限超過しています",
+                    priority=1,
+                )
+            )
+            warnings.append(f"{len(overdue_tasks)}件のタスクが期限超過")
+
+        # 2. Check for tasks due soon (within 3 days)
+        soon_tasks = [
+            t
+            for t in analyzed_tasks
+            if t.due_date
+            and datetime.now() <= t.due_date < datetime.now() + timedelta(days=3)
+        ]
+        if soon_tasks:
+            insights.append(
+                PortfolioInsight(
+                    insight_type="sequence",
+                    related_tasks=[t.id for t in soon_tasks],
+                    description=f"{len(soon_tasks)}件のタスクが3日以内に期限を迎えます",
+                    priority=2,
+                )
+            )
+
+        # 3. Find blocking tasks (tasks that block others)
+        blocker_tasks = []
+        for t in analyzed_tasks:
+            blocked_by_this = self._get_blocked_tasks(t.id, tasks)
+            if len(blocked_by_this) >= 2:
+                blocker_tasks.append((t, len(blocked_by_this)))
+        if blocker_tasks:
+            blocker_tasks.sort(key=lambda x: x[1], reverse=True)
+            top_blocker = blocker_tasks[0]
+            insights.append(
+                PortfolioInsight(
+                    insight_type="blocker",
+                    related_tasks=[top_blocker[0].id],
+                    description=f"「{top_blocker[0].title}」が{top_blocker[1]}件のタスクをブロックしています",
+                    priority=1,
+                )
+            )
+
+        # 4. Group by priority
+        from ...models.enums import Priority
+
+        priority_groups: dict[str, list[str]] = {}
+        for t in analyzed_tasks:
+            key = t.priority.value
+            if key not in priority_groups:
+                priority_groups[key] = []
+            priority_groups[key].append(t.id)
+
+        task_groups: list[tuple[str, list[str]]] = []
+        for priority, task_ids in priority_groups.items():
+            if len(task_ids) >= 2:
+                task_groups.append((f"優先度: {priority}", task_ids))
+
+        # 5. Check for stale tasks
+        stale_tasks = [
+            t for t in analyzed_tasks if (datetime.now() - t.created_at).days >= 14
+        ]
+        if stale_tasks:
+            insights.append(
+                PortfolioInsight(
+                    insight_type="optimization",
+                    related_tasks=[t.id for t in stale_tasks],
+                    description=f"{len(stale_tasks)}件のタスクが2週間以上未着手です",
+                    priority=3,
+                )
+            )
+
+        # Build overall assessment
+        high_priority_count = len([t for t in analyzed_tasks if analyses[t.id].score >= 70])
+        assessment_parts = [f"{len(analyzed_tasks)}件のタスクを分析しました。"]
+        if high_priority_count > 0:
+            assessment_parts.append(f"高優先度: {high_priority_count}件。")
+        if overdue_tasks:
+            assessment_parts.append(f"期限超過: {len(overdue_tasks)}件に注意。")
+
+        result = HolisticResult(
+            insights=insights,
+            ranked_tasks=ranked_tasks,
+            recommended_order=recommended_order,
+            task_groups=task_groups,
+            overall_assessment=" ".join(assessment_parts),
+            warnings=warnings,
+            total_tasks=total_tasks,
+            analyzed_tasks=len(analyzed_tasks),
+        )
+
+        # Add warning if tasks were truncated
+        if total_tasks > max_tasks:
+            result.warnings.insert(
+                0, f"タスク数が多いため、上位{max_tasks}件のみ分析しました（全{total_tasks}件中）"
+            )
 
         return result

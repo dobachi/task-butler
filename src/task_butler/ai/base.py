@@ -68,6 +68,54 @@ class PlanResult:
     warnings: list[str] = field(default_factory=list)  # e.g., overdue tasks
 
 
+@dataclass
+class PortfolioInsight:
+    """Cross-task insight from holistic analysis."""
+
+    insight_type: str  # "sequence", "grouping", "blocker", "warning", "optimization"
+    related_tasks: list[str] = field(default_factory=list)  # Task IDs involved
+    description: str = ""  # Human-readable explanation
+    priority: int = 3  # Importance 1-5 (1=highest)
+
+
+@dataclass
+class TaskWithReason:
+    """A task with its priority reason."""
+
+    task_id: str
+    score: float
+    reason: str  # Why this task is prioritized
+
+
+@dataclass
+class HolisticResult:
+    """Result of holistic/portfolio-level task analysis."""
+
+    # Cross-task insights
+    insights: list[PortfolioInsight] = field(default_factory=list)
+
+    # Recommended execution order with reasons
+    ranked_tasks: list[TaskWithReason] = field(default_factory=list)
+
+    # Legacy: just task IDs (for backward compat)
+    recommended_order: list[str] = field(default_factory=list)
+
+    # Suggested task groupings (lists of task IDs)
+    task_groups: list[tuple[str, list[str]]] = field(
+        default_factory=list
+    )  # (group_name, [task_ids])
+
+    # Overall assessment text
+    overall_assessment: str = ""
+
+    # Warning messages
+    warnings: list[str] = field(default_factory=list)
+
+    # Metadata
+    total_tasks: int = 0
+    analyzed_tasks: int = 0  # May be less than total if truncated
+
+
 class AIProvider(ABC):
     """Abstract base class for AI providers."""
 
@@ -125,5 +173,24 @@ class AIProvider(ABC):
 
         Returns:
             PlanResult with scheduled time slots
+        """
+        pass
+
+    @abstractmethod
+    def analyze_portfolio(
+        self,
+        tasks: list["Task"],
+        max_tasks: int = 20,
+    ) -> HolisticResult:
+        """Analyze all tasks holistically to provide cross-task insights.
+
+        Args:
+            tasks: List of open tasks to analyze
+            max_tasks: Maximum number of tasks to include in analysis
+                       (due to context window limitations)
+
+        Returns:
+            HolisticResult with portfolio-level insights, recommended order,
+            and task groupings
         """
         pass

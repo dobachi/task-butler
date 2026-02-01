@@ -1,20 +1,34 @@
 """AI integration module for Task Butler."""
 
 from .analyzer import TaskAnalyzer
-from .base import AIProvider, AnalysisResult, PlanResult, SuggestionResult
+from .base import (
+    AIProvider,
+    AnalysisResult,
+    HolisticResult,
+    PlanResult,
+    PortfolioInsight,
+    SuggestionResult,
+    TaskWithReason,
+)
 from .model_manager import ModelManager
 from .planner import DailyPlanner
+from .prompts import PromptManager, get_prompt_manager
 from .suggester import TaskSuggester
 
 __all__ = [
     "AIProvider",
     "AnalysisResult",
+    "HolisticResult",
+    "PortfolioInsight",
     "SuggestionResult",
+    "TaskWithReason",
     "PlanResult",
     "TaskAnalyzer",
     "TaskSuggester",
     "DailyPlanner",
     "ModelManager",
+    "PromptManager",
+    "get_prompt_manager",
 ]
 
 

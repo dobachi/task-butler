@@ -206,6 +206,73 @@ pyenv local 3.12.0
 
 ---
 
+## プロンプトのカスタマイズ
+
+AIの応答をカスタマイズするには、`config.toml`でプロンプトを上書きできます。
+
+### プロンプト一覧の確認
+
+```bash
+# 現在のプロンプト一覧
+tb ai prompts
+
+# 特定のプロンプトを表示
+tb ai prompts analyze_system
+
+# プレースホルダー情報を表示
+tb ai prompts -p
+
+# 特定プロンプトのプレースホルダーを表示
+tb ai prompts analyze_user -p
+```
+
+### 利用可能なプロンプトキー
+
+| キー | 用途 | プレースホルダー |
+|------|------|------------------|
+| `analyze_system` | タスク分析のシステムプロンプト | なし |
+| `analyze_user` | タスク分析のユーザープロンプト | `{context}`, `{score}` |
+| `suggest_system` | 提案生成のシステムプロンプト | なし |
+| `suggest_user` | 提案生成のユーザープロンプト | `{title}`, `{context}` |
+| `reason_system` | 理由説明のシステムプロンプト | なし |
+| `reason_user` | 理由説明のユーザープロンプト | `{title}`, `{context}` |
+
+### プレースホルダー一覧
+
+| プレースホルダー | 説明 |
+|------------------|------|
+| `{context}` | タスクの詳細情報（タイトル、優先度、期限等） |
+| `{score}` | ルールベースで計算された優先度スコア (0-100) |
+| `{title}` | タスクのタイトル |
+
+### カスタムプロンプトの設定例
+
+`~/.task-butler/config.toml`:
+
+```toml
+[ai.prompts.ja]
+analyze_system = "あなたは優秀なタスク管理の専門家です。タスクを分析し、優先度の理由を説明してください。"
+analyze_user = "以下のタスクを分析してください：\n\n{context}\n\n優先度スコア: {score}/100\n\n理由を1-2文で説明してください："
+
+[ai.prompts.en]
+analyze_system = "You are an expert task manager. Analyze tasks and explain priority."
+analyze_user = "Analyze the following task:\n\n{context}\n\nPriority score: {score}/100\n\nExplain in 1-2 sentences:"
+```
+
+### 動作確認
+
+```bash
+# カスタムプロンプトがロードされているか確認
+tb ai prompts analyze_system
+
+# 実際にAI分析を実行
+tb analyze -n 1
+```
+
+カスタマイズされたプロンプトには `*` マークが表示されます。
+
+---
+
 ## 関連リンク
 
 - [llama-cpp-python GitHub](https://github.com/abetlen/llama-cpp-python)
