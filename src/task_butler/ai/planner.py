@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from .base import AIProvider, PlanResult
-from .providers.rule_based import RuleBasedProvider
 
 if TYPE_CHECKING:
     from ..models.task import Task
@@ -26,13 +25,16 @@ class DailyPlanner:
         """Initialize the planner.
 
         Args:
-            provider: AI provider to use. Defaults to RuleBasedProvider.
+            provider: AI provider to use. If None, uses config setting.
             default_hours: Default working hours per day
             buffer_ratio: Ratio of time to reserve as buffer
             morning_hours: Hours before lunch break
             start_time: Default start time (HH:MM)
         """
-        self.provider = provider or RuleBasedProvider()
+        if provider is None:
+            from . import get_provider
+            provider = get_provider()
+        self.provider = provider
         self.default_hours = default_hours
         self.buffer_ratio = buffer_ratio
         self.morning_hours = morning_hours

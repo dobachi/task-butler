@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from .base import AIProvider, SuggestionResult
-from .providers.rule_based import RuleBasedProvider
 
 if TYPE_CHECKING:
     from ..models.task import Task
@@ -20,9 +19,12 @@ class TaskSuggester:
         """Initialize the suggester.
 
         Args:
-            provider: AI provider to use. Defaults to RuleBasedProvider.
+            provider: AI provider to use. If None, uses config setting.
         """
-        self.provider = provider or RuleBasedProvider()
+        if provider is None:
+            from . import get_provider
+            provider = get_provider()
+        self.provider = provider
 
     def suggest(
         self,

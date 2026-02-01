@@ -112,11 +112,11 @@ class LlamaProvider(AIProvider):
             return None
 
     def analyze_task(self, task: "Task", all_tasks: list["Task"]) -> AnalysisResult:
-        """Analyze a task using LLM or fallback to rules."""
-        # First get rule-based analysis as baseline
+        """Analyze a task using LLM for reasoning, rules for scoring."""
+        # Get rule-based analysis for reliable scoring
         rule_result = self._fallback.analyze_task(task, all_tasks)
 
-        # Try LLM enhancement
+        # Try LLM enhancement for natural language reasoning
         llm = self._get_llm()
         if llm is None:
             return rule_result
@@ -124,43 +124,72 @@ class LlamaProvider(AIProvider):
         # Build context about the task
         context = self._build_task_context(task, all_tasks)
 
+        # Use a simpler prompt for natural language response
         prompt = f"""<|system|>
-あなたはタスク管理アシスタントです。タスクを分析し、優先度スコア（0-100）と理由を提供してください。
+You are a task management assistant. Analyze the task and explain why it should be prioritized.
+Be concise (1-2 sentences). Write in Japanese.
 </s>
 <|user|>
-以下のタスクを分析してください：
+Analyze this task and explain its priority:
 
 {context}
 
-JSON形式で回答してください：
-{{"score": 数値, "reasoning": "理由", "suggestions": ["提案1", "提案2"]}}
+Current priority score: {rule_result.score}/100
+
+Why should this task be prioritized? Give a brief explanation:
 </s>
 <|assistant|>
 """
 
-        response = self._generate(prompt)
-        if response is None:
-            return rule_result
+        response = self._generate(prompt, max_tokens=150)
+        if response:
+            # Clean up the response
+            reasoning = response.strip()
+            # Remove any incomplete sentences at the end
+            if reasoning and not reasoning.endswith(('。', '.', '!', '?')):
+                last_period = max(reasoning.rfind('。'), reasoning.rfind('.'))
+                if last_period > 0:
+                    reasoning = reasoning[:last_period + 1]
 
-        # Try to parse JSON response
-        try:
-            # Extract JSON from response
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
-                score = float(data.get("score", rule_result.score))
-                # Blend with rule-based score (70% LLM, 30% rules)
-                blended_score = score * 0.7 + rule_result.score * 0.3
+            if reasoning and len(reasoning) > 10:
+                # Generate suggestions using LLM
+                suggestions = self._generate_suggestions_llm(task, context)
+
                 return AnalysisResult(
                     task_id=task.id,
-                    score=round(blended_score, 1),
-                    reasoning=data.get("reasoning", rule_result.reasoning),
-                    suggestions=data.get("suggestions", rule_result.suggestions),
+                    score=rule_result.score,
+                    reasoning=f"🤖 {reasoning}",
+                    suggestions=suggestions or rule_result.suggestions,
                 )
-        except (json.JSONDecodeError, ValueError, KeyError):
-            pass
 
         return rule_result
+
+    def _generate_suggestions_llm(self, task: "Task", context: str) -> list[str]:
+        """Generate action suggestions using LLM."""
+        prompt = f"""<|system|>
+You are a task management assistant. Give 1-2 brief action suggestions for the task.
+Write in Japanese. Be specific and actionable.
+</s>
+<|user|>
+Task: {task.title}
+{context}
+
+Give 1-2 brief suggestions (one per line):
+</s>
+<|assistant|>
+"""
+        response = self._generate(prompt, max_tokens=100)
+        if response:
+            lines = [line.strip() for line in response.strip().split('\n') if line.strip()]
+            # Clean up suggestions
+            suggestions = []
+            for line in lines[:2]:
+                # Remove numbering
+                line = re.sub(r'^[\d\.\-\*]+\s*', '', line)
+                if line and len(line) > 5:
+                    suggestions.append(line)
+            return suggestions
+        return []
 
     def suggest_tasks(
         self,
@@ -169,8 +198,8 @@ JSON形式で回答してください：
         energy_level: str | None = None,
         count: int = 5,
     ) -> list[SuggestionResult]:
-        """Suggest tasks using LLM or fallback to rules."""
-        # Get rule-based suggestions first
+        """Suggest tasks with LLM-generated reasons."""
+        # Get rule-based suggestions for ordering
         rule_suggestions = self._fallback.suggest_tasks(
             tasks, hours_available, energy_level, count
         )
@@ -179,76 +208,47 @@ JSON形式で回答してください：
         if llm is None:
             return rule_suggestions
 
-        # Build task list context
-        open_tasks = [t for t in tasks if t.is_open]
-        if not open_tasks:
-            return []
+        # Enhance each suggestion with LLM reasoning
+        enhanced_suggestions = []
+        for suggestion in rule_suggestions[:count]:
+            task = suggestion.task
+            context = self._build_task_context(task, tasks)
 
-        task_list = "\n".join(
-            f"- {t.short_id}: {t.title} (優先度: {t.priority.value}, "
-            f"見積: {t.estimated_hours or '不明'}h)"
-            for t in open_tasks[:15]  # Limit for context
-        )
-
-        constraints = []
-        if hours_available:
-            constraints.append(f"利用可能時間: {hours_available}時間")
-        if energy_level:
-            energy_map = {"low": "低", "medium": "中", "high": "高"}
-            constraints.append(f"エネルギーレベル: {energy_map.get(energy_level, energy_level)}")
-
-        prompt = f"""<|system|>
-あなたはタスク管理アシスタントです。状況に応じて最適なタスクを提案してください。
+            prompt = f"""<|system|>
+You are a task assistant. Explain briefly why this task should be done now.
+Write in Japanese. One sentence only.
 </s>
 <|user|>
-以下のタスクから、取り組むべき順にタスクIDを{count}個選んでください：
+Task: {task.title}
+{context}
 
-タスク一覧：
-{task_list}
-
-{chr(10).join(constraints) if constraints else "特に制約なし"}
-
-タスクIDを優先度順にカンマ区切りで回答してください。
+Why do this task now?
 </s>
 <|assistant|>
 """
+            response = self._generate(prompt, max_tokens=80)
+            reason = suggestion.reason  # Default to rule-based reason
 
-        response = self._generate(prompt, max_tokens=128)
-        if response is None:
-            return rule_suggestions
+            if response:
+                cleaned = response.strip()
+                # Take first sentence only
+                for sep in ['。', '.', '\n']:
+                    if sep in cleaned:
+                        cleaned = cleaned.split(sep)[0] + ('。' if sep == '。' else '')
+                        break
+                if cleaned and len(cleaned) > 5:
+                    reason = f"🤖 {cleaned}"
 
-        # Try to parse task IDs from response
-        try:
-            # Extract task IDs (8-char hex patterns)
-            task_ids = re.findall(r'[a-f0-9]{8}', response.lower())
-            if task_ids:
-                # Reorder suggestions based on LLM response
-                id_to_task = {t.short_id.lower(): t for t in open_tasks}
-                llm_ordered = []
-                seen = set()
-                for tid in task_ids[:count]:
-                    if tid in id_to_task and tid not in seen:
-                        task = id_to_task[tid]
-                        analysis = self._fallback.analyze_task(task, tasks)
-                        llm_ordered.append(
-                            SuggestionResult(
-                                task=task,
-                                score=analysis.score,
-                                reason=analysis.reasoning,
-                                estimated_minutes=(
-                                    int(task.estimated_hours * 60)
-                                    if task.estimated_hours
-                                    else None
-                                ),
-                            )
-                        )
-                        seen.add(tid)
-                if llm_ordered:
-                    return llm_ordered
-        except Exception:
-            pass
+            enhanced_suggestions.append(
+                SuggestionResult(
+                    task=task,
+                    score=suggestion.score,
+                    reason=reason,
+                    estimated_minutes=suggestion.estimated_minutes,
+                )
+            )
 
-        return rule_suggestions
+        return enhanced_suggestions
 
     def create_daily_plan(
         self,

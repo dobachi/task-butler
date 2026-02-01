@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .base import AIProvider, AnalysisResult
-from .providers.rule_based import RuleBasedProvider
 
 if TYPE_CHECKING:
     from ..models.task import Task
@@ -18,9 +17,12 @@ class TaskAnalyzer:
         """Initialize the analyzer.
 
         Args:
-            provider: AI provider to use. Defaults to RuleBasedProvider.
+            provider: AI provider to use. If None, uses config setting.
         """
-        self.provider = provider or RuleBasedProvider()
+        if provider is None:
+            from . import get_provider
+            provider = get_provider()
+        self.provider = provider
 
     def analyze(self, task: "Task", all_tasks: list["Task"]) -> AnalysisResult:
         """Analyze a single task.
