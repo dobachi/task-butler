@@ -79,9 +79,7 @@ def generate_wiki_link(
     from ...storage.markdown import MarkdownStorage
 
     # Generate the task filename with proper organization settings
-    storage = MarkdownStorage(
-        storage_dir, organization=organization, kanban_dirs=kanban_dirs
-    )
+    storage = MarkdownStorage(storage_dir, organization=organization, kanban_dirs=kanban_dirs)
     filename = storage._task_filename(task.id, task.title)
 
     # Get the correct directory based on task status (for kanban mode)
@@ -1156,6 +1154,7 @@ def fix_links(
                     if f"|{task.title}]]" in line and line.strip().startswith("- "):
                         # Extract existing link
                         import re
+
                         link_match = re.search(r"(!?\[\[[^\]]+\]\])", line)
                         if link_match:
                             existing_link = link_match.group(1)

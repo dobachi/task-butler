@@ -716,7 +716,12 @@ class TestWikiLinkGeneration:
         # Test with custom kanban dirs
         custom_dirs = {"backlog": "Todo", "done": "Completed"}
         link_custom = generate_wiki_link(
-            task_pending, storage, vault, LinkFormat.WIKI, organization="kanban", kanban_dirs=custom_dirs
+            task_pending,
+            storage,
+            vault,
+            LinkFormat.WIKI,
+            organization="kanban",
+            kanban_dirs=custom_dirs,
         )
         assert link_custom == "[[Tasks/Todo/11111111_Pending_Task|Pending Task]]"
 

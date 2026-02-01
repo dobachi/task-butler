@@ -20,9 +20,7 @@ def show_task(
     ctx: typer.Context,
     task_id: Annotated[
         str,
-        typer.Argument(
-            ..., help="Task ID (full or short)", autocompletion=complete_open_task_id
-        ),
+        typer.Argument(..., help="Task ID (full or short)", autocompletion=complete_open_task_id),
     ],
 ) -> None:
     """Show detailed information about a task.
