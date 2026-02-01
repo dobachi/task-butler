@@ -4,11 +4,11 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from task_butler.ai import TaskAnalyzer, TaskSuggester, DailyPlanner
-from task_butler.ai.base import AnalysisResult, SuggestionResult, PlanResult
+from task_butler.ai import DailyPlanner, TaskAnalyzer, TaskSuggester
+from task_butler.ai.base import AnalysisResult, PlanResult, SuggestionResult
 from task_butler.ai.providers.rule_based import RuleBasedProvider
+from task_butler.models.enums import Priority
 from task_butler.models.task import Task
-from task_butler.models.enums import Priority, Status
 
 
 @pytest.fixture
@@ -116,9 +116,6 @@ class TestRuleBasedProvider:
         suggestions = provider.suggest_tasks(sample_tasks, hours_available=2.0)
 
         # Should filter to tasks fitting in 2 hours
-        total_hours = sum(
-            s.task.estimated_hours or 1.0 for s in suggestions
-        )
         # At least one should fit
         assert len(suggestions) > 0
 
