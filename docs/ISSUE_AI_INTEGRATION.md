@@ -11,6 +11,8 @@
 - **AI方式**: `llama-cpp-python` + 初回起動時に小型モデル自動ダウンロード
 - **ローカル優先**: インターネット接続なしでも動作
 - **軽量**: 小型モデル（例: TinyLlama, Phi-2）を使用
+- **日本語対応**: ELYZA Japanese Llama 2 などの日本語モデルをサポート
+- **多言語出力**: 英語/日本語の出力切り替えに対応
 - **オプション**: OpenAI API も選択可能
 
 ## 実装機能
@@ -166,25 +168,44 @@ openai = [
 ```bash
 # モデル保存場所
 ~/.task-butler/models/
-├── tinyllama-1.1b-chat.gguf    # デフォルトモデル（約600MB）
-└── phi-2.gguf                   # 代替モデル（約1.5GB）
+├── tinyllama-1.1b-chat.gguf                          # デフォルト（約670MB）
+├── phi-2.gguf                                         # 代替モデル（約1.6GB）
+└── ELYZA-japanese-Llama-2-7b-fast-instruct-q4_K_M.gguf # 日本語モデル（約4GB）
+
+# 利用可能なモデル一覧
+tb ai models
+
+# モデルをダウンロード
+tb ai download tinyllama-1.1b   # 英語（軽量）
+tb ai download elyza-jp-7b      # 日本語（推奨）
+
+# 使用モデルを切り替え
+tb config set ai.llama.model_name elyza-jp-7b
 
 # 手動でモデルを指定
-tb config set ai.model_path /path/to/custom/model.gguf
+tb config set ai.llama.model_path /path/to/custom/model.gguf
 ```
+
+### 利用可能なモデル
+
+| モデル名 | サイズ | 言語 | 説明 |
+|---------|-------|------|------|
+| `tinyllama-1.1b` | 670MB | 英語 | 軽量・高速、基本的なタスク分析向け |
+| `phi-2` | 1.6GB | 英語 | Microsoft製、より高度な推論 |
+| `elyza-jp-7b` | 4GB | 日本語 | 日本語タスク分析に最適 |
 
 ### 設定の追加（config.toml）
 
 ```toml
 [ai]
-enabled = true
 provider = "llama"        # "llama", "rule_based", or "openai"
+language = "ja"           # 出力言語: "en"（英語）or "ja"（日本語）
 
 [ai.llama]
-model_name = "tinyllama-1.1b-chat"  # 自動ダウンロードするモデル
-model_path = ""                      # カスタムモデルパス（空なら自動）
-n_ctx = 2048                         # コンテキストサイズ
-n_gpu_layers = 0                     # GPU使用レイヤー数（0=CPU only）
+model_name = "elyza-jp-7b"  # 使用するモデル名
+model_path = ""              # カスタムモデルパス（空なら自動）
+n_ctx = 2048                 # コンテキストサイズ
+n_gpu_layers = 0             # GPU使用レイヤー数（0=CPU only）
 
 [ai.openai]
 model = "gpt-4o-mini"
@@ -203,6 +224,20 @@ buffer_ratio = 0.1        # バッファ時間の割合
 morning_hours = 4         # 午前の時間
 ```
 
+### 言語設定
+
+出力言語を切り替えることができます：
+
+```bash
+# 日本語出力（デフォルト）
+tb config set ai.language ja
+
+# 英語出力
+tb config set ai.language en
+```
+
+日本語出力には日本語モデル（`elyza-jp-7b`）の使用を推奨します。
+
 ### タスクモデルの拡張
 
 ```python
@@ -218,54 +253,61 @@ class Task(BaseModel):
 
 ## 実装フェーズ
 
-### Phase 2.1: 基盤構築
-- [ ] `ai/` ディレクトリ構造の作成
-- [ ] AIプロバイダー抽象クラスの実装
-- [ ] ルールベースプロバイダーの実装（フォールバック用）
-- [ ] 設定ファイルへのAIセクション追加
+### Phase 2.1: 基盤構築 ✅
+- [x] `ai/` ディレクトリ構造の作成
+- [x] AIプロバイダー抽象クラスの実装
+- [x] ルールベースプロバイダーの実装（フォールバック用）
+- [x] 設定ファイルへのAIセクション追加
 
-### Phase 2.2: llama-cpp-python統合
-- [ ] `llama-cpp-python` 依存関係の追加
-- [ ] `ai/model_manager.py` の実装（モデル自動ダウンロード）
-- [ ] `ai/providers/llama.py` の実装
-- [ ] 初回起動時のモデルダウンロード機能
-- [ ] テストの追加
+### Phase 2.2: llama-cpp-python統合 ✅
+- [x] `llama-cpp-python` 依存関係の追加
+- [x] `ai/model_manager.py` の実装（モデル自動ダウンロード）
+- [x] `ai/providers/llama.py` の実装
+- [x] 初回起動時のモデルダウンロード機能
+- [x] テストの追加
 
-### Phase 2.3: タスク分析
-- [ ] `ai/analyzer.py` の実装
-- [ ] `cli/commands/analyze.py` の実装
-- [ ] タスクモデルへのAIフィールド追加
-- [ ] プロンプトテンプレートの設計
-- [ ] テストの追加
+### Phase 2.3: タスク分析 ✅
+- [x] `ai/analyzer.py` の実装
+- [x] `cli/commands/analyze.py` の実装
+- [x] タスクモデルへのAIフィールド追加
+- [x] プロンプトテンプレートの設計
+- [x] テストの追加
 
-### Phase 2.4: スマート提案
-- [ ] `ai/suggester.py` の実装
-- [ ] `cli/commands/suggest.py` の実装
-- [ ] テストの追加
+### Phase 2.4: スマート提案 ✅
+- [x] `ai/suggester.py` の実装
+- [x] `cli/commands/suggest.py` の実装
+- [x] テストの追加
 
-### Phase 2.5: 日次計画
-- [ ] `ai/planner.py` の実装
-- [ ] `cli/commands/plan.py` の実装
+### Phase 2.5: 日次計画 ✅
+- [x] `ai/planner.py` の実装
+- [x] `cli/commands/plan.py` の実装
 - [ ] インタラクティブモードの実装
-- [ ] テストの追加
+- [x] テストの追加
 
 ### Phase 2.6: OpenAI統合（オプション）
 - [ ] `ai/providers/openai.py` の実装
 - [ ] APIキー管理の実装
 - [ ] ドキュメントの追加
 
+### Phase 2.7: 多言語・日本語対応 ✅
+- [x] 出力言語設定（`ai.language`）の追加
+- [x] 日本語/英語プロンプトテンプレートの実装
+- [x] 日本語モデル（ELYZA Japanese Llama 2）のサポート
+
 ## 受け入れ基準
 
-- [ ] `tb analyze` コマンドが動作する
-- [ ] `tb suggest` コマンドが動作する
-- [ ] `tb plan` コマンドが動作する
-- [ ] 初回起動時にモデルが自動ダウンロードされる
-- [ ] `llama-cpp-python` によるローカル推論が動作する
-- [ ] ルールベースモードがフォールバックとして動作する
+- [x] `tb analyze` コマンドが動作する
+- [x] `tb suggest` コマンドが動作する
+- [x] `tb plan` コマンドが動作する
+- [x] 初回起動時にモデルが自動ダウンロードされる
+- [x] `llama-cpp-python` によるローカル推論が動作する
+- [x] ルールベースモードがフォールバックとして動作する
 - [ ] OpenAI統合がオプションで利用可能
-- [ ] 既存機能に影響を与えない
-- [ ] テストカバレッジ80%以上
-- [ ] ドキュメントの更新
+- [x] 既存機能に影響を与えない
+- [x] テストカバレッジ80%以上（22件のAIテスト追加）
+- [x] ドキュメントの更新
+- [x] 日本語/英語の出力切り替えが可能
+- [x] 日本語モデル（ELYZA）が利用可能
 
 ## 関連情報
 
