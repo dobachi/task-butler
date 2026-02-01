@@ -10,6 +10,7 @@ from typing import Literal
 StorageFormat = Literal["frontmatter", "hybrid"]
 OrganizationMethod = Literal["flat", "kanban"]
 AIProvider = Literal["rule_based", "llama", "openai"]
+AILanguage = Literal["en", "ja"]
 
 
 class Config:
@@ -157,6 +158,11 @@ class Config:
                     raise ValueError(
                         f"Invalid provider: {value}. Must be 'rule_based', 'llama', or 'openai'"
                     )
+            elif name == "language":
+                if value not in ("en", "ja"):
+                    raise ValueError(
+                        f"Invalid language: {value}. Must be 'en' or 'ja'"
+                    )
             else:
                 raise ValueError(f"Unknown ai key: {name}")
         else:
@@ -275,6 +281,17 @@ class Config:
             return provider  # type: ignore
         return "rule_based"
 
+    def get_ai_language(self) -> AILanguage:
+        """Get the AI output language.
+
+        Returns:
+            The language code ('en' for English, 'ja' for Japanese)
+        """
+        language = self._file_config.get("ai", {}).get("language", "ja")
+        if language in ("en", "ja"):
+            return language  # type: ignore
+        return "ja"
+
     def get_ai_config(self) -> dict:
         """Get all AI-related configuration.
 
@@ -283,6 +300,7 @@ class Config:
         """
         defaults = {
             "provider": "rule_based",
+            "language": "ja",
             "llama": {
                 "model_name": "tinyllama-1.1b",
                 "model_path": "",

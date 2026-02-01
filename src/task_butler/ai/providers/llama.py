@@ -10,6 +10,46 @@ from ..base import AIProvider, AnalysisResult, PlanResult, SuggestionResult, Tim
 from ..model_manager import ModelManager, DEFAULT_MODEL
 from .rule_based import RuleBasedProvider
 
+# Language-specific prompt templates
+PROMPTS = {
+    "en": {
+        "analyze_system": "You are a task management assistant. Analyze the task and explain why it should be prioritized.\nBe concise (1-2 sentences).",
+        "analyze_user": "Analyze this task and explain its priority:\n\n{context}\n\nCurrent priority score: {score}/100\n\nWhy should this task be prioritized? Give a brief explanation:",
+        "suggest_system": "You are a task assistant. Give 1-2 brief action suggestions for the task.\nBe specific and actionable.",
+        "suggest_user": "Task: {title}\n{context}\n\nGive 1-2 brief suggestions (one per line):",
+        "reason_system": "You are a task assistant. Explain briefly why this task should be done now.\nOne sentence only.",
+        "reason_user": "Task: {title}\n{context}\n\nWhy do this task now?",
+        "task_name": "Task",
+        "priority": "Priority",
+        "status": "Status",
+        "description": "Description",
+        "deadline_overdue": "Deadline: {days} days overdue",
+        "deadline_today": "Deadline: today",
+        "deadline_days": "Deadline: in {days} days",
+        "estimated_hours": "Estimated time: {hours} hours",
+        "blocking": "Blocking: {count} tasks not completed",
+        "blocked_by": "Waiting for this task: {count} tasks",
+    },
+    "ja": {
+        "analyze_system": "あなたはタスク管理アシスタントです。タスクを分析し、なぜ優先すべきかを説明してください。\n簡潔に（1-2文で）書いてください。",
+        "analyze_user": "このタスクを分析し、優先度の理由を説明してください：\n\n{context}\n\n現在の優先度スコア: {score}/100\n\nなぜこのタスクを優先すべきですか？簡潔に説明してください：",
+        "suggest_system": "あなたはタスク管理アシスタントです。タスクに対する1-2個の具体的なアクション提案をしてください。\n具体的で実行可能なものにしてください。",
+        "suggest_user": "タスク: {title}\n{context}\n\n1-2個の提案を書いてください（1行ずつ）：",
+        "reason_system": "あなたはタスクアシスタントです。このタスクを今やるべき理由を簡潔に説明してください。\n一文のみで。",
+        "reason_user": "タスク: {title}\n{context}\n\nなぜ今このタスクをやるべき？",
+        "task_name": "タスク名",
+        "priority": "優先度",
+        "status": "ステータス",
+        "description": "説明",
+        "deadline_overdue": "期限: {days}日超過",
+        "deadline_today": "期限: 今日",
+        "deadline_days": "期限: {days}日後",
+        "estimated_hours": "見積時間: {hours}時間",
+        "blocking": "ブロック中: {count}個のタスクが未完了",
+        "blocked_by": "このタスクを待っている: {count}個",
+    },
+}
+
 if TYPE_CHECKING:
     from datetime import datetime
     from ...models.task import Task
@@ -36,6 +76,7 @@ class LlamaProvider(AIProvider):
         n_ctx: int = 2048,
         n_gpu_layers: int = 0,
         verbose: bool = False,
+        language: str = "ja",
     ):
         """Initialize Llama provider.
 
@@ -45,12 +86,14 @@ class LlamaProvider(AIProvider):
             n_ctx: Context window size.
             n_gpu_layers: Number of layers to offload to GPU.
             verbose: Whether to show verbose output.
+            language: Output language ('en' for English, 'ja' for Japanese).
         """
         self.model_path = model_path
         self.model_name = model_name
         self.n_ctx = n_ctx
         self.n_gpu_layers = n_gpu_layers
         self.verbose = verbose
+        self.language = language if language in ("en", "ja") else "ja"
         self._llm = None
         self._fallback = RuleBasedProvider()
         self._model_manager = ModelManager()
@@ -124,19 +167,16 @@ class LlamaProvider(AIProvider):
         # Build context about the task
         context = self._build_task_context(task, all_tasks)
 
-        # Use a simpler prompt for natural language response
+        # Get language-specific prompts
+        p = PROMPTS[self.language]
+        system_prompt = p["analyze_system"]
+        user_prompt = p["analyze_user"].format(context=context, score=rule_result.score)
+
         prompt = f"""<|system|>
-You are a task management assistant. Analyze the task and explain why it should be prioritized.
-Be concise (1-2 sentences). Write in Japanese.
+{system_prompt}
 </s>
 <|user|>
-Analyze this task and explain its priority:
-
-{context}
-
-Current priority score: {rule_result.score}/100
-
-Why should this task be prioritized? Give a brief explanation:
+{user_prompt}
 </s>
 <|assistant|>
 """
@@ -166,15 +206,15 @@ Why should this task be prioritized? Give a brief explanation:
 
     def _generate_suggestions_llm(self, task: "Task", context: str) -> list[str]:
         """Generate action suggestions using LLM."""
+        p = PROMPTS[self.language]
+        system_prompt = p["suggest_system"]
+        user_prompt = p["suggest_user"].format(title=task.title, context=context)
+
         prompt = f"""<|system|>
-You are a task management assistant. Give 1-2 brief action suggestions for the task.
-Write in Japanese. Be specific and actionable.
+{system_prompt}
 </s>
 <|user|>
-Task: {task.title}
-{context}
-
-Give 1-2 brief suggestions (one per line):
+{user_prompt}
 </s>
 <|assistant|>
 """
@@ -208,21 +248,22 @@ Give 1-2 brief suggestions (one per line):
         if llm is None:
             return rule_suggestions
 
+        p = PROMPTS[self.language]
+
         # Enhance each suggestion with LLM reasoning
         enhanced_suggestions = []
         for suggestion in rule_suggestions[:count]:
             task = suggestion.task
             context = self._build_task_context(task, tasks)
 
+            system_prompt = p["reason_system"]
+            user_prompt = p["reason_user"].format(title=task.title, context=context)
+
             prompt = f"""<|system|>
-You are a task assistant. Explain briefly why this task should be done now.
-Write in Japanese. One sentence only.
+{system_prompt}
 </s>
 <|user|>
-Task: {task.title}
-{context}
-
-Why do this task now?
+{user_prompt}
 </s>
 <|assistant|>
 """
@@ -270,36 +311,38 @@ Why do this task now?
 
     def _build_task_context(self, task: "Task", all_tasks: list["Task"]) -> str:
         """Build context string for a task."""
+        p = PROMPTS[self.language]
+
         lines = [
-            f"タスク名: {task.title}",
-            f"優先度: {task.priority.value}",
-            f"ステータス: {task.status.value}",
+            f"{p['task_name']}: {task.title}",
+            f"{p['priority']}: {task.priority.value}",
+            f"{p['status']}: {task.status.value}",
         ]
 
         if task.description:
-            lines.append(f"説明: {task.description}")
+            lines.append(f"{p['description']}: {task.description}")
 
         if task.due_date:
             from datetime import datetime
             days = (task.due_date - datetime.now()).days
             if days < 0:
-                lines.append(f"期限: {days * -1}日超過")
+                lines.append(p["deadline_overdue"].format(days=days * -1))
             elif days == 0:
-                lines.append("期限: 今日")
+                lines.append(p["deadline_today"])
             else:
-                lines.append(f"期限: {days}日後")
+                lines.append(p["deadline_days"].format(days=days))
 
         if task.estimated_hours:
-            lines.append(f"見積時間: {task.estimated_hours}時間")
+            lines.append(p["estimated_hours"].format(hours=task.estimated_hours))
 
         # Check dependencies
         blocking = [t for t in all_tasks if t.id in task.dependencies and t.is_open]
         if blocking:
-            lines.append(f"ブロック中: {len(blocking)}個のタスクが未完了")
+            lines.append(p["blocking"].format(count=len(blocking)))
 
         blocked_by = [t for t in all_tasks if task.id in t.dependencies and t.is_open]
         if blocked_by:
-            lines.append(f"このタスクを待っている: {len(blocked_by)}個")
+            lines.append(p["blocked_by"].format(count=len(blocked_by)))
 
         return "\n".join(lines)
 
