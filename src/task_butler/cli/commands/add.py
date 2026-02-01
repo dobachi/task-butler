@@ -83,89 +83,89 @@ def parse_recurrence(value: str) -> RecurrenceRule:
 
 def wizard_add(manager: TaskManager, initial_title: Optional[str] = None) -> None:
     """Interactive wizard for adding a task."""
-    # 1. タイトル（必須）
+    # 1. Title (required)
     if initial_title:
         title = initial_title
-        console.print(f"[bold]タスク名:[/bold] {title}")
+        console.print(f"[bold]Title:[/bold] {title}")
     else:
-        title = Prompt.ask("[bold]タスク名[/bold]")
+        title = Prompt.ask("[bold]Title[/bold]")
         if not title:
-            console.print("[red]タスク名は必須です[/red]")
+            console.print("[red]Title is required[/red]")
             raise typer.Exit(1)
 
-    # 2. 説明
-    description = Prompt.ask("説明", default="")
+    # 2. Description
+    description = Prompt.ask("Description", default="")
 
-    # 3. 優先度
+    # 3. Priority
     priority_str = Prompt.ask(
-        "優先度",
+        "Priority",
         choices=["urgent", "high", "medium", "low", "lowest"],
         default="medium",
     )
 
-    # 4. 期限
-    due_date = pick_date("期限")
+    # 4. Due date
+    due_date = pick_date("Due date")
 
-    # 5. 予定日
-    scheduled_date = pick_date("予定日")
+    # 5. Scheduled date
+    scheduled_date = pick_date("Scheduled date")
 
-    # 6. 開始日
-    start_date = pick_date("開始日")
+    # 6. Start date
+    start_date = pick_date("Start date")
 
-    # 7. タグ
-    tags_str = Prompt.ask("タグ (カンマ区切り)", default="")
+    # 7. Tags
+    tags_str = Prompt.ask("Tags (comma-separated)", default="")
     tags = [t.strip() for t in tags_str.split(",") if t.strip()] if tags_str else []
 
-    # 8. プロジェクト
-    project = Prompt.ask("プロジェクト", default="") or None
+    # 8. Project
+    project = Prompt.ask("Project", default="") or None
 
-    # 9. 親タスク
-    parent_id = Prompt.ask("親タスクID", default="") or None
+    # 9. Parent task
+    parent_id = Prompt.ask("Parent task ID", default="") or None
 
-    # 10. 依存タスク
-    depends_str = Prompt.ask("依存タスクID (カンマ区切り)", default="")
+    # 10. Dependencies
+    depends_str = Prompt.ask("Dependency IDs (comma-separated)", default="")
     depends = [d.strip() for d in depends_str.split(",") if d.strip()] if depends_str else []
 
-    # 11. 見積時間
-    est_str = Prompt.ask("見積時間 (時間)", default="")
+    # 11. Estimated hours
+    est_str = Prompt.ask("Estimated hours", default="")
     estimated_hours = float(est_str) if est_str else None
 
-    # 12. 繰り返し
+    # 12. Recurrence
     recurrence_str = (
         Prompt.ask(
-            "繰り返し",
+            "Recurrence",
             choices=["", "daily", "weekly", "monthly", "yearly"],
             default="",
         )
         or None
     )
 
-    # 確認表示
-    console.print("\n[bold]--- タスク内容 ---[/bold]")
-    console.print(f"タイトル: {title}")
+    # Show summary
+    console.print("\n[bold]--- Task Summary ---[/bold]")
+    console.print(f"Title: {title}")
     if description:
-        console.print(f"説明: {description}")
-    console.print(f"優先度: {priority_str}")
+        console.print(f"Description: {description}")
+    console.print(f"Priority: {priority_str}")
     if due_date:
-        console.print(f"期限: {due_date}")
+        console.print(f"Due: {due_date}")
     if scheduled_date:
-        console.print(f"予定日: {scheduled_date}")
+        console.print(f"Scheduled: {scheduled_date}")
     if start_date:
-        console.print(f"開始日: {start_date}")
+        console.print(f"Start: {start_date}")
     if tags:
-        console.print(f"タグ: {', '.join(tags)}")
+        console.print(f"Tags: {', '.join(tags)}")
     if project:
-        console.print(f"プロジェクト: {project}")
+        console.print(f"Project: {project}")
     if parent_id:
-        console.print(f"親タスク: {parent_id}")
+        console.print(f"Parent: {parent_id}")
     if depends:
-        console.print(f"依存タスク: {', '.join(depends)}")
+        console.print(f"Dependencies: {', '.join(depends)}")
     if estimated_hours:
-        console.print(f"見積時間: {estimated_hours}時間")
+        console.print(f"Estimated: {estimated_hours}h")
     if recurrence_str:
-        console.print(f"繰り返し: {recurrence_str}")
+        console.print(f"Recurrence: {recurrence_str}")
 
-    if Confirm.ask("\nこのタスクを作成しますか？", default=True):
+    if Confirm.ask("\nCreate this task?", default=True):
         # Convert date to datetime if needed
         due_datetime = datetime.combine(due_date, datetime.min.time()) if due_date else None
         scheduled_datetime = (
@@ -190,9 +190,9 @@ def wizard_add(manager: TaskManager, initial_title: Optional[str] = None) -> Non
             estimated_hours=estimated_hours,
             recurrence=recurrence,
         )
-        console.print(f"\n[green]✓ タスクを作成しました: {task.short_id}[/green]")
+        console.print(f"\n[green]✓ Created task: {task.short_id}[/green]")
     else:
-        console.print("[yellow]キャンセルしました[/yellow]")
+        console.print("[yellow]Cancelled[/yellow]")
 
 
 def add_task(
