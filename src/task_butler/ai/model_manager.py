@@ -28,6 +28,13 @@ AVAILABLE_MODELS = {
         "size_mb": 1630,
         "description": "Microsoft's compact model, better reasoning",
     },
+    "elyza-jp-7b": {
+        "name": "ELYZA Japanese Llama 2 7B",
+        "url": "https://huggingface.co/mmnga/ELYZA-japanese-Llama-2-7b-fast-instruct-gguf/resolve/main/ELYZA-japanese-Llama-2-7b-fast-instruct-q4_K_M.gguf",
+        "filename": "ELYZA-japanese-Llama-2-7b-fast-instruct-q4_K_M.gguf",
+        "size_mb": 4080,
+        "description": "Japanese language model, excellent for Japanese text",
+    },
 }
 
 DEFAULT_MODEL = "tinyllama-1.1b"
