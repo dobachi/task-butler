@@ -8,7 +8,7 @@ from typing import Optional
 import typer
 from rich.console import Console
 
-from .commands import add, list_cmd, show, status
+from .commands import add, analyze, list_cmd, plan, show, status, suggest
 from .commands.config_cmd import config_app
 from .commands.obsidian import obsidian_app
 
@@ -31,6 +31,11 @@ app.command(name="done")(status.done_task)
 app.command(name="cancel")(status.cancel_task)
 app.command(name="delete")(status.delete_task)
 app.command(name="note")(status.add_note)
+
+# AI commands
+app.command(name="analyze")(analyze.analyze_tasks)
+app.command(name="suggest")(suggest.suggest_tasks)
+app.command(name="plan")(plan.plan_day)
 
 # Register sub-apps
 app.add_typer(config_app, name="config")
