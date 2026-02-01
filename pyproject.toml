@@ -1,6 +1,6 @@
 [project]
 name = "markdown-task-butler"
-version = "0.2.2"
+version = "0.2.3"
 description = "A task management tool that helps prioritize and recommend actions - your digital butler for tasks"
 readme = "README.md"
 license = {text = "MIT"}
@@ -27,7 +27,6 @@ dependencies = [
     "python-frontmatter>=1.0.0",
     "rich>=13.0.0",
     "tomli-w>=1.0.0",
-    "npyscreen>=4.10.0",
 ]
 
 [project.urls]

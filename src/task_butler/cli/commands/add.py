@@ -103,26 +103,14 @@ def wizard_add(manager: TaskManager, initial_title: Optional[str] = None) -> Non
         default="medium",
     )
 
-    # 4. 期限 (カレンダー)
-    console.print("\n[cyan]期限を設定しますか？[/cyan]")
-    if Confirm.ask("カレンダーを開く", default=False):
-        due_date = pick_date("期限")
-    else:
-        due_date = None
+    # 4. 期限
+    due_date = pick_date("期限")
 
-    # 5. 予定日 (カレンダー)
-    console.print("\n[cyan]予定日を設定しますか？[/cyan]")
-    if Confirm.ask("カレンダーを開く", default=False):
-        scheduled_date = pick_date("予定日")
-    else:
-        scheduled_date = None
+    # 5. 予定日
+    scheduled_date = pick_date("予定日")
 
-    # 6. 開始日 (カレンダー)
-    console.print("\n[cyan]開始日を設定しますか？[/cyan]")
-    if Confirm.ask("カレンダーを開く", default=False):
-        start_date = pick_date("開始日")
-    else:
-        start_date = None
+    # 6. 開始日
+    start_date = pick_date("開始日")
 
     # 7. タグ
     tags_str = Prompt.ask("タグ (カンマ区切り)", default="")
