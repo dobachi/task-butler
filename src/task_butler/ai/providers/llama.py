@@ -509,6 +509,9 @@ class LlamaProvider(AIProvider):
                 # Parse assessment
                 if "assessment" in data:
                     result.overall_assessment = str(data["assessment"])
+            else:
+                # No JSON found, use response as free-form text
+                result.overall_assessment = response.strip()
 
         except (json.JSONDecodeError, KeyError, TypeError):
             # If JSON parsing fails, treat response as free-form text
