@@ -91,10 +91,18 @@ start_time = "09:00"            # Work start time
 
 # Japanese prompts
 # [ai.prompts.ja]
+# # Individual task analysis
 # analyze_system = "あなたは優秀なタスク管理の専門家です。"
 # analyze_user = "以下のタスクを分析してください:\n\n{context}\n\nスコア: {score}/100"
+# # Holistic/portfolio analysis (tb analyze)
+# portfolio_system = "あなたはタスク管理の専門家です。タスク一覧を俯瞰的に分析してください。"
+# portfolio_user = "以下の{task_count}件のタスクを分析してください:\n\n{task_list}\n\n緊急性、グルーピング、注意点を簡潔に回答してください。"
 
 # English prompts
 # [ai.prompts.en]
+# # Individual task analysis
 # analyze_system = "You are an expert task management assistant."
 # analyze_user = "Analyze this task:\n\n{context}\n\nScore: {score}/100"
+# # Holistic/portfolio analysis (tb analyze)
+# portfolio_system = "You are a task management expert. Analyze the task list holistically."
+# portfolio_user = "Analyze these {task_count} tasks:\n\n{task_list}\n\nProvide urgency, grouping suggestions, and issues concisely."
